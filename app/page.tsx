@@ -165,6 +165,7 @@ export default function Home() {
   }
 
   const remaining = Math.max(0, mandate.budgetCents - mandate.spentCents);
+  const settled = reply.startsWith("Purchased");
   const pct = mandate.budgetCents > 0 ? Math.min(1, mandate.spentCents / mandate.budgetCents) : 0;
   const meterColor = pct > 0.85 ? "#f43f5e" : pct > 0.6 ? "#f59e0b" : "#3b7dff";
   const badge = (v: string) =>
@@ -176,17 +177,31 @@ export default function Home() {
     <MotionConfig reducedMotion="user">
       <main className="min-h-screen text-slate-100 selection:bg-[#3b7dff]/30">
         <div className="relative mx-auto max-w-5xl px-4 py-10">
-          <motion.header initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={SPRING.stiff} className="mb-8">
-            <div className="flex items-center gap-3">
+          <motion.header initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={SPRING.stiff} className="mb-9">
+            <div className="flex items-center gap-2.5">
               <AgentOrb active={thinking} reduce={!!reduce} />
-              <div>
-                <h1 className="text-[1.65rem] font-semibold leading-none tracking-[-0.03em] text-white">gofer</h1>
-                <p className="mt-1 text-sm text-slate-400">An autonomous shopping agent that spends your money — only within a mandate you grant.</p>
-              </div>
+              <span className="text-lg font-semibold tracking-[-0.03em] text-white">gofer</span>
               <span className="ml-auto hidden items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-400 sm:flex">
                 <span className={`h-1.5 w-1.5 rounded-full ${mandateId ? "bg-emerald-400" : "bg-slate-600"}`} />
                 {mandateId ? "mandate enforced server-side" : "connecting…"}
               </span>
+            </div>
+            <div className="mt-8 max-w-2xl">
+              <h1 className="text-[2.1rem] font-semibold leading-[1.1] tracking-[-0.03em] text-white sm:text-[2.6rem]">
+                An agent that shops for you —{" "}
+                <span className="bg-gradient-to-r from-[#8fb6ff] to-[#b3a7ff] bg-clip-text text-transparent">and can&apos;t overspend.</span>
+              </h1>
+              <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-slate-400">
+                Grant a mandate — budget, per-item cap, categories. Gofer reasons with Meta Muse, finds the buy, and settles through PayPal, strictly within your limits.
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                {["Reasons on Meta Muse", "Settles via PayPal", "Shops Channel3"].map((t, i) => (
+                  <span key={t} className="flex items-center gap-2">
+                    {i > 0 && <span className="text-slate-700">·</span>}
+                    <span className="text-slate-400">{t}</span>
+                  </span>
+                ))}
+              </div>
             </div>
           </motion.header>
 
@@ -194,7 +209,7 @@ export default function Home() {
             {/* LEFT */}
             <section className="space-y-5">
               <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.smooth, delay: 0.05 }}
-                className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 backdrop-blur">
+                className="relative rounded-2xl border border-[#4d8bff]/25 bg-white/[0.03] p-5 shadow-[0_0_0_1px_rgba(77,139,255,0.08),0_26px_70px_-34px_rgba(106,91,255,0.55)] backdrop-blur">
                 <div className="mb-3 flex flex-wrap gap-2">
                   {([
                     ["🎁 Auto-approved buy", "A cheap seed pack for the garden under $18"],
@@ -250,7 +265,14 @@ export default function Home() {
               <AnimatePresence>
                 {reply && !thinking && (
                   <motion.div key="result" initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }} transition={SPRING.bouncy}
-                    className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
+                    className={`relative rounded-2xl border p-5 ${settled ? "border-emerald-500/40 bg-emerald-500/[0.06] shadow-[0_0_40px_-12px_rgba(16,185,129,0.5)]" : "border-white/[0.06] bg-white/[0.03]"}`}>
+                    {settled && (
+                      <div className="mb-3 flex items-center gap-2.5">
+                        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={SPRING.bouncy}
+                          className="grid h-7 w-7 place-items-center rounded-full bg-emerald-500 text-sm font-bold text-slate-950">✓</motion.span>
+                        <span className="text-sm font-semibold text-emerald-300">Payment settled</span>
+                      </div>
+                    )}
                     <p className="text-sm text-slate-200">{reply}</p>
                     {pick && decision && (
                       <div className="mt-4 rounded-xl border border-white/[0.07] bg-black/30 p-4">
@@ -382,6 +404,40 @@ export default function Home() {
               </div>
             </motion.aside>
           </div>
+
+          {/* How it works */}
+          <section className="mt-16">
+            <p className="mb-5 text-center text-xs font-medium uppercase tracking-[0.2em] text-slate-500">How it works</p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {([
+                ["01", "Grant a mandate", "Set a budget, a per-item cap, allowed categories and blocked merchants. It lives on the server — the agent can't exceed it."],
+                ["02", "The agent works", "Gofer searches real products and reasons with Meta Muse to pick the best buy within your limits."],
+                ["03", "Approve → PayPal settles", "Small buys clear automatically; bigger ones wait for one tap. Every charge is a real PayPal capture, logged."],
+              ] as const).map(([n, t, d], i) => (
+                <motion.div key={n} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ ...SPRING.smooth, delay: i * 0.06 }}
+                  className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+                  <span className="font-mono text-xs text-[#8fb6ff]">{n}</span>
+                  <h3 className="mt-2 text-sm font-semibold text-white">{t}</h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-slate-400">{d}</p>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+
+          {/* Footer */}
+          <footer className="mt-16 flex flex-col items-center gap-3 border-t border-white/[0.06] pt-6 text-center sm:flex-row sm:justify-between sm:text-left">
+            <div className="flex items-center gap-2 text-sm">
+              <LogoMark className="h-5 w-5" />
+              <span className="font-semibold tracking-tight text-slate-200">gofer</span>
+              <span className="hidden text-slate-600 sm:inline">· agentic commerce, on a leash you hold</span>
+            </div>
+            <div className="flex items-center gap-x-2.5 text-xs text-slate-500">
+              <span>Meta Muse</span><span className="text-slate-700">·</span>
+              <span>PayPal</span><span className="text-slate-700">·</span>
+              <span>Channel3</span><span className="text-slate-700">·</span>
+              <span>Next.js</span>
+            </div>
+          </footer>
         </div>
       </main>
     </MotionConfig>
