@@ -19,7 +19,7 @@ type Decision = { verdict: "auto_approve" | "needs_approval" | "deny"; reason: s
 type Entry = { id: string; at: number; kind: string; summary: string; detail?: string; amountCents?: number; orderId?: string; captureId?: string; approveUrl?: string; proposalId?: string };
 type Mandate = {
   label: string; budgetCents: number; perItemCapCents: number; autoApproveUnderCents: number;
-  allowedCategories?: string[]; blockedMerchants?: string[]; expiresAt?: number; spentCents: number;
+  allowedCategories?: string[]; blockedMerchants?: string[]; expiresAt?: number; vaultId?: string; spentCents: number;
 };
 
 const dollars = (c: number) => `$${(c / 100).toFixed(2)}`;
@@ -61,6 +61,7 @@ export default function Home() {
   const [decision, setDecision] = useState<Decision | null>(null);
   const [proposalId, setProposalId] = useState<string | null>(null);
   const [approveUrl, setApproveUrl] = useState<string | null>(null);
+  const [vaultSetupId, setVaultSetupId] = useState<string | null>(null);
   const [considered, setConsidered] = useState<Product[]>([]);
   const [ledger, setLedger] = useState<Entry[]>([]);
   const created = useRef(false);
@@ -154,6 +155,20 @@ export default function Home() {
       if (d.settled) { setReply(`Purchased ${pick?.title} — PayPal order ${d.order?.id} settled.`); setDecision(null); setPick(null); setProposalId(null); setApproveUrl(null); }
       else setReply(d.error ?? "Not settled yet — approve the order in PayPal first.");
     } finally { setBusy(false); }
+  }
+
+  // Vault: link a PayPal wallet once so auto-approved buys settle hands-free.
+  async function linkWallet() {
+    if (!mandateId) return;
+    const r = await fetch("/api/vault", { method: "POST", body: JSON.stringify({ mandateId }) });
+    const d = await r.json();
+    if (d.approveUrl) { setVaultSetupId(d.setupTokenId); window.open(d.approveUrl, "_blank", "noopener"); }
+  }
+  async function finishLink() {
+    if (!mandateId || !vaultSetupId) return;
+    const r = await fetch("/api/vault", { method: "PUT", body: JSON.stringify({ mandateId, setupTokenId: vaultSetupId }) });
+    const d = await r.json();
+    if (d.mandate) { setMandate(d.mandate); setVaultSetupId(null); }
   }
 
   function preset(g: string) { setGoal(g); run(g); }
@@ -401,6 +416,28 @@ export default function Home() {
                 <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
                   Limits and spend live on the server. The agent can&apos;t spend outside them — editing the numbers only changes your own mandate, never a purchase or the running total.
                 </p>
+
+                <div className="mt-4 rounded-xl border border-white/[0.07] bg-black/20 p-3">
+                  {mandate.vaultId ? (
+                    <p className="flex items-center gap-2 text-xs text-emerald-300">
+                      <span className="grid h-4 w-4 place-items-center rounded-full bg-emerald-500/20 text-[10px]">✓</span>
+                      Wallet linked — auto-approved buys settle hands-free.
+                    </p>
+                  ) : vaultSetupId ? (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-slate-400">Approve the wallet in the PayPal window, then:</p>
+                      <button onClick={finishLink}
+                        className="w-full rounded-lg bg-emerald-500 py-1.5 text-xs font-semibold text-slate-950 hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
+                        I authorized — finish linking
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={linkWallet} disabled={!mandateId}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#4d8bff]/30 bg-[#4d8bff]/10 py-1.5 text-xs font-medium text-[#8fb6ff] transition-colors hover:bg-[#4d8bff]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b7dff] disabled:opacity-40">
+                      ⚡ Link PayPal wallet — settle hands-free
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.aside>
           </div>

@@ -9,13 +9,13 @@ import type { Product } from "@/lib/adapters/channel3";
 const returnUrl = (req: NextRequest) => new URL("/", req.url).toString();
 
 // Finalize a settled capture: bump the server-side spend and log it.
-function finalize(mandateId: string, pid: string, p: Product, orderId: string, captureId: string | undefined, approvedByHuman: boolean, mock: boolean) {
+function finalize(mandateId: string, pid: string, p: Product, orderId: string, captureId: string | undefined, approvedByHuman: boolean, mock: boolean, handsFree = false) {
   const mandate = addSpent(mandateId, p.priceCents);
   dropPending(pid);
   const entry = record({
     kind: "purchased",
-    summary: `${approvedByHuman ? "Purchased (you approved)" : "Auto-purchased"} ${p.title}`,
-    detail: `Settled via PayPal${mock ? " (sandbox mock)" : ""}.`,
+    summary: `${approvedByHuman ? "Purchased (you approved)" : handsFree ? "Auto-purchased hands-free" : "Auto-purchased"} ${p.title}`,
+    detail: `${handsFree ? "No human tap — charged your vaulted wallet. " : ""}Settled via PayPal${mock ? " (sandbox mock)" : ""}.`,
     amountCents: p.priceCents,
     orderId,
     captureId,
@@ -26,11 +26,11 @@ function finalize(mandateId: string, pid: string, p: Product, orderId: string, c
 // Create a PayPal order for a parked proposal and try to capture immediately.
 // Mock settles at once; live sandbox needs buyer approval first (returns the
 // approveUrl and leaves the proposal open to capture via PATCH).
-async function createAndTry(req: NextRequest, mandateId: string, pid: string, p: Product, approvedByHuman: boolean) {
-  const order = await createOrder(p.title, p.priceCents, returnUrl(req));
+async function createAndTry(req: NextRequest, mandateId: string, pid: string, p: Product, approvedByHuman: boolean, vaultId?: string) {
+  const order = await createOrder(p.title, p.priceCents, returnUrl(req), vaultId);
   setPendingOrder(pid, order.id);
   const cap = await captureOrder(order.id);
-  if (cap.settled) return finalize(mandateId, pid, p, order.id, cap.captureId, approvedByHuman, order.mock);
+  if (cap.settled) return finalize(mandateId, pid, p, order.id, cap.captureId, approvedByHuman, order.mock, !!vaultId);
   const entry = record({
     kind: "ordered",
     summary: `Order created for ${p.title} — approve in PayPal to settle`,
@@ -64,7 +64,9 @@ export async function POST(req: NextRequest) {
 
   if (result.decision.verdict === "auto_approve") {
     const pid = savePending(mandateId, p);
-    const s = await createAndTry(req, mandateId, pid, p, false);
+    // If a wallet is vaulted, settle hands-free (no human). Otherwise fall back
+    // to the approve→capture flow.
+    const s = await createAndTry(req, mandateId, pid, p, false, mandate.vaultId);
     return NextResponse.json({ ...result, ...s, entries: [...entries, ...s.entries] });
   }
 

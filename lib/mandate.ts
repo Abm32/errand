@@ -19,6 +19,9 @@ export type Mandate = {
   blockedMerchants?: string[];
   /** Epoch ms after which the mandate is dead. Omit for no expiry. */
   expiresAt?: number;
+  /** PayPal vault payment-token id. Present once a wallet is linked → the agent
+   *  can settle auto-approved buys hands-free (merchant-initiated). */
+  vaultId?: string;
   /** Running total already spent under this mandate. */
   spentCents: number;
 };

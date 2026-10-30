@@ -91,6 +91,16 @@ export function addSpent(mandateId: string, cents: number): Mandate | undefined 
   return next;
 }
 
+export function attachVault(mandateId: string, vaultId: string): Mandate | undefined {
+  load();
+  const m = mandates.get(mandateId);
+  if (!m) return undefined;
+  const next = { ...m, vaultId };
+  mandates.set(mandateId, next);
+  persist();
+  return next;
+}
+
 export function savePending(mandateId: string, product: Product): string {
   load();
   const pid = id("pr");
