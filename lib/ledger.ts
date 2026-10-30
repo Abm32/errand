@@ -1,8 +1,13 @@
 // Transparent activity ledger — every move the agent makes is recorded here so
 // the user can audit exactly what their money-spending agent did and why.
-// In-memory for the demo.
-// ponytail: in-memory, swap for a DB (Prisma/Postgres) when multi-session or
-// persistence across restarts is needed.
+//
+// Persistence: a JSON file (stdlib fs, no deps). Survives restarts on a writable
+// disk; no-ops quietly on read-only hosts.
+// ponytail: single-file append-and-rewrite; swap for a DB alongside the store
+// when scaling past one instance.
+
+import fs from "node:fs";
+import path from "node:path";
 
 export type LedgerEntry = {
   id: string;
@@ -17,12 +22,40 @@ export type LedgerEntry = {
   proposalId?: string;
 };
 
-const store: LedgerEntry[] = [];
+let store: LedgerEntry[] = [];
+
+const file = () => process.env.LEDGER_FILE ?? path.join(process.cwd(), ".data", "ledger.json");
+
+let loaded = false;
+function load() {
+  if (loaded) return;
+  loaded = true;
+  try {
+    store = JSON.parse(fs.readFileSync(file(), "utf8"));
+  } catch {
+    /* none yet */
+  }
+}
+
+function persist() {
+  try {
+    const f = file();
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, JSON.stringify(store));
+  } catch (e) {
+    console.warn("ledger persist skipped:", (e as Error).message);
+  }
+}
 
 export function record(e: Omit<LedgerEntry, "id" | "at">): LedgerEntry {
+  load();
   const entry: LedgerEntry = { id: `l_${store.length + 1}_${Date.now()}`, at: Date.now(), ...e };
   store.push(entry);
+  persist();
   return entry;
 }
 
-export const all = () => [...store];
+export function all() {
+  load();
+  return [...store];
+}

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx lib/mandate.test.ts && tsx lib/store.test.ts"
+    "test": "tsx lib/mandate.test.ts && rm -f /tmp/errand-test-store.json && STORE_FILE=/tmp/errand-test-store.json tsx lib/store.test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.92",

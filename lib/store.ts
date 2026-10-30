@@ -5,24 +5,59 @@
 // or fake a lower spend / cheaper price, because every decision is made
 // against this store.
 //
-// ponytail: in-memory module singleton. Swap for Prisma/Postgres when it must
-// survive restarts or scale past one server instance.
+// Persistence: a plain JSON file (stdlib fs, no DB, no keys). It survives
+// process restarts on any writable disk. On a read-only / ephemeral-per-instance
+// host (e.g. serverless) the write quietly no-ops and we run in-memory — the
+// client's recreate-on-404 covers that case.
+//
+// ponytail: single-file, single-writer, full-rewrite-per-mutation. Fine for a
+// demo-scale single instance; swap for Prisma/Postgres for real concurrency/scale.
 
+import fs from "node:fs";
+import path from "node:path";
 import type { Mandate } from "./mandate";
 import type { Product } from "./adapters/channel3";
 
 type Pending = { id: string; mandateId: string; product: Product; orderId?: string };
 
-const mandates = new Map<string, Mandate>();
-const pending = new Map<string, Pending>();
-
+let mandates = new Map<string, Mandate>();
+let pending = new Map<string, Pending>();
 let seq = 0;
+
+const file = () => process.env.STORE_FILE ?? path.join(process.cwd(), ".data", "store.json");
+
+let loaded = false;
+function load() {
+  if (loaded) return;
+  loaded = true;
+  try {
+    const s = JSON.parse(fs.readFileSync(file(), "utf8"));
+    mandates = new Map(s.mandates ?? []);
+    pending = new Map(s.pending ?? []);
+    seq = s.seq ?? 0;
+  } catch {
+    /* no file yet, or unreadable — start empty */
+  }
+}
+
+function persist() {
+  try {
+    const f = file();
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, JSON.stringify({ mandates: [...mandates], pending: [...pending], seq }));
+  } catch (e) {
+    console.warn("store persist skipped:", (e as Error).message);
+  }
+}
+
 const id = (p: string) => `${p}_${++seq}_${Math.random().toString(36).slice(2, 8)}`;
 
 export function createMandate(input: Omit<Mandate, "spentCents">): { mandateId: string; mandate: Mandate } {
+  load();
   const mandateId = id("md");
   const mandate: Mandate = { ...input, spentCents: 0 };
   mandates.set(mandateId, mandate);
+  persist();
   return { mandateId, mandate };
 }
 
@@ -31,34 +66,56 @@ export function updateMandate(
   mandateId: string,
   patch: Partial<Omit<Mandate, "spentCents">>,
 ): Mandate | undefined {
+  load();
   const m = mandates.get(mandateId);
   if (!m) return undefined;
   const next = { ...m, ...patch, spentCents: m.spentCents };
   mandates.set(mandateId, next);
+  persist();
   return next;
 }
 
-export const getMandate = (mandateId: string) => mandates.get(mandateId);
+export function getMandate(mandateId: string) {
+  load();
+  return mandates.get(mandateId);
+}
 
 /** Only ever called server-side, after a real capture. */
 export function addSpent(mandateId: string, cents: number): Mandate | undefined {
+  load();
   const m = mandates.get(mandateId);
   if (!m) return undefined;
   const next = { ...m, spentCents: m.spentCents + cents };
   mandates.set(mandateId, next);
+  persist();
   return next;
 }
 
 export function savePending(mandateId: string, product: Product): string {
+  load();
   const pid = id("pr");
   pending.set(pid, { id: pid, mandateId, product });
+  persist();
   return pid;
 }
 
-export const getPending = (pid: string) => pending.get(pid);
-export const dropPending = (pid: string) => pending.delete(pid);
+export function getPending(pid: string) {
+  load();
+  return pending.get(pid);
+}
+
+export function dropPending(pid: string) {
+  load();
+  const ok = pending.delete(pid);
+  persist();
+  return ok;
+}
 
 export function setPendingOrder(pid: string, orderId: string) {
+  load();
   const p = pending.get(pid);
-  if (p) pending.set(pid, { ...p, orderId });
+  if (p) {
+    pending.set(pid, { ...p, orderId });
+    persist();
+  }
 }

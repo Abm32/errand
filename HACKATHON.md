@@ -147,7 +147,9 @@ Note: PayPal does not support INR; used USD + a US sandbox buyer
 4. [ ] Auto-approve path in live sandbox needs a buyer-approved/**vaulted** payment
        method (Orders v2 needs approval before capture) — wire PayPal Vault, or
        demo the human-approved path for live settlement.
-5. [ ] Persist store to a DB (Prisma/Postgres) so mandates survive restarts.
+5. [x] ~~Persist store so mandates survive restarts.~~ DONE — file-backed store +
+       ledger (stdlib fs, no deps), verified across processes. DB (Prisma/Postgres)
+       remains the upgrade for multi-instance/concurrency.
 6. [ ] **Deploy** to Render; set env vars; smoke-test the hosted URL.
 7. [ ] Record the **demo video**; write the **Devpost** entry.
 8. [ ] (Stretch) Wire one real **PayPal Agent Toolkit** action (seller-side

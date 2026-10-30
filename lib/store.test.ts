@@ -40,4 +40,12 @@ assert.equal(getPending(pid), undefined, "dropped proposal is gone");
 assert.equal(getMandate("nope"), undefined);
 assert.equal(updateMandate("nope", { budgetCents: 1 }), undefined);
 
-console.log("✓ store: mandate/spend/proposal integrity checks passed");
+// Persistence: state was written to STORE_FILE and reloads with the real spend.
+import fs from "node:fs";
+const f = process.env.STORE_FILE;
+assert.ok(f && fs.existsSync(f), "store file should exist after writes");
+const snap = JSON.parse(fs.readFileSync(f!, "utf8"));
+const saved = new Map<string, { spentCents: number }>(snap.mandates);
+assert.equal(saved.get(mandateId)?.spentCents, 2500, "persisted file carries the real spend");
+
+console.log("✓ store: mandate/spend/proposal integrity + persistence checks passed");
