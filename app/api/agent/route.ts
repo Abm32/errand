@@ -3,37 +3,43 @@ import { runAgent } from "@/lib/agent";
 import { createOrder, captureOrder } from "@/lib/adapters/paypal";
 import { record } from "@/lib/ledger";
 import { screen } from "@/lib/mandate";
-import { getMandate, addSpent, savePending, getPending, dropPending } from "@/lib/store";
+import { getMandate, addSpent, savePending, getPending, dropPending, setPendingOrder } from "@/lib/store";
 import type { Product } from "@/lib/adapters/channel3";
 
-// Settle a purchase: create a PayPal order, capture it, and only on a real
-// settlement increment the mandate's server-side spend. Returns the entries to
-// append and the authoritative mandate.
-async function settle(mandateId: string, product: Product, approvedByHuman: boolean) {
-  const order = await createOrder(product.title, product.priceCents);
+const returnUrl = (req: NextRequest) => new URL("/", req.url).toString();
+
+// Finalize a settled capture: bump the server-side spend and log it.
+function finalize(mandateId: string, pid: string, p: Product, orderId: string, captureId: string | undefined, approvedByHuman: boolean, mock: boolean) {
+  const mandate = addSpent(mandateId, p.priceCents);
+  dropPending(pid);
+  const entry = record({
+    kind: "purchased",
+    summary: `${approvedByHuman ? "Purchased (you approved)" : "Auto-purchased"} ${p.title}`,
+    detail: `Settled via PayPal${mock ? " (sandbox mock)" : ""}.`,
+    amountCents: p.priceCents,
+    orderId,
+    captureId,
+  });
+  return { settled: true, order: { id: orderId, mock }, entries: [entry], mandate };
+}
+
+// Create a PayPal order for a parked proposal and try to capture immediately.
+// Mock settles at once; live sandbox needs buyer approval first (returns the
+// approveUrl and leaves the proposal open to capture via PATCH).
+async function createAndTry(req: NextRequest, mandateId: string, pid: string, p: Product, approvedByHuman: boolean) {
+  const order = await createOrder(p.title, p.priceCents, returnUrl(req));
+  setPendingOrder(pid, order.id);
   const cap = await captureOrder(order.id);
-  if (cap.settled) {
-    const mandate = addSpent(mandateId, product.priceCents);
-    const entry = record({
-      kind: "purchased",
-      summary: `${approvedByHuman ? "Purchased (you approved)" : "Auto-purchased"} ${product.title}`,
-      detail: `Settled via PayPal${cap.mock ? " (sandbox mock)" : ""}.`,
-      amountCents: product.priceCents,
-      orderId: order.id,
-      captureId: cap.captureId,
-    });
-    return { order, cap, entries: [entry], mandate };
-  }
-  // Order created but not settled (live sandbox: buyer must approve first).
+  if (cap.settled) return finalize(mandateId, pid, p, order.id, cap.captureId, approvedByHuman, order.mock);
   const entry = record({
     kind: "ordered",
-    summary: `Order created for ${product.title} — awaiting PayPal settlement`,
-    detail: `Status ${cap.status}. Approve the order to settle.`,
-    amountCents: product.priceCents,
+    summary: `Order created for ${p.title} — approve in PayPal to settle`,
+    detail: `Status ${cap.status}.`,
+    amountCents: p.priceCents,
     orderId: order.id,
     approveUrl: order.approveUrl,
   });
-  return { order, cap, entries: [entry], mandate: getMandate(mandateId) };
+  return { settled: false, order, approveUrl: order.approveUrl, proposalId: pid, entries: [entry], mandate: getMandate(mandateId) };
 }
 
 // Run an errand against a server-held mandate.
@@ -46,9 +52,7 @@ export async function POST(req: NextRequest) {
   const result = await runAgent(goal, mandate);
   const entries = [record({ kind: "search", summary: `Searched for: "${goal}"`, detail: `${result.considered.length} products considered` })];
 
-  if (!result.pick || !result.decision) {
-    return NextResponse.json({ ...result, entries, mandate });
-  }
+  if (!result.pick || !result.decision) return NextResponse.json({ ...result, entries, mandate });
 
   const p = result.pick;
   entries.push(record({ kind: "recommend", summary: `Recommends ${p.title}`, detail: result.reply, amountCents: p.priceCents }));
@@ -59,18 +63,19 @@ export async function POST(req: NextRequest) {
   }
 
   if (result.decision.verdict === "auto_approve") {
-    const s = await settle(mandateId, p, false);
-    return NextResponse.json({ ...result, entries: [...entries, ...s.entries], order: s.order, mandate: s.mandate });
+    const pid = savePending(mandateId, p);
+    const s = await createAndTry(req, mandateId, pid, p, false);
+    return NextResponse.json({ ...result, ...s, entries: [...entries, ...s.entries] });
   }
 
-  // needs_approval: park a server-side proposal so the price can't be tampered with.
-  const proposalId = savePending(mandateId, p);
-  entries.push(record({ kind: "awaiting_approval", summary: `Awaiting your approval for ${p.title}`, detail: result.decision.reason, amountCents: p.priceCents, proposalId }));
-  return NextResponse.json({ ...result, entries, proposalId, mandate });
+  // needs_approval: park the proposal; the order is created when the human approves.
+  const pid = savePending(mandateId, p);
+  entries.push(record({ kind: "awaiting_approval", summary: `Awaiting your approval for ${p.title}`, detail: result.decision.reason, amountCents: p.priceCents, proposalId: pid }));
+  return NextResponse.json({ ...result, entries, proposalId: pid, mandate });
 }
 
-// Approve a parked proposal. Re-screen against the live server mandate (defense
-// in depth) before settling.
+// Human approves a needs_approval proposal: create the order and try to settle.
+// Re-screen against the live server mandate first (defense in depth).
 export async function PUT(req: NextRequest) {
   const { proposalId } = (await req.json()) as { proposalId: string };
   const pending = getPending(proposalId);
@@ -85,7 +90,19 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: decision.reason, entries: [e], mandate }, { status: 409 });
   }
 
-  const s = await settle(pending.mandateId, p, true);
-  dropPending(proposalId);
-  return NextResponse.json({ order: s.order, entries: s.entries, mandate: s.mandate });
+  const s = await createAndTry(req, pending.mandateId, proposalId, p, true);
+  return NextResponse.json(s);
+}
+
+// Capture after the buyer approved the order in PayPal (live sandbox two-step).
+export async function PATCH(req: NextRequest) {
+  const { proposalId } = (await req.json()) as { proposalId: string };
+  const pending = getPending(proposalId);
+  if (!pending?.orderId) return NextResponse.json({ error: "No order to capture." }, { status: 404 });
+  const cap = await captureOrder(pending.orderId);
+  if (!cap.settled) {
+    return NextResponse.json({ settled: false, error: `Not settled yet (${cap.status}). Approve the order in PayPal first.` }, { status: 409 });
+  }
+  const s = finalize(pending.mandateId, proposalId, pending.product, pending.orderId, cap.captureId, true, cap.mock);
+  return NextResponse.json(s);
 }

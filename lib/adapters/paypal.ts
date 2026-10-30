@@ -44,6 +44,7 @@ async function accessToken(): Promise<string> {
 export async function createOrder(
   description: string,
   amountCents: number,
+  returnUrl?: string,
 ): Promise<Order> {
   const configured =
     process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET;
@@ -70,6 +71,10 @@ export async function createOrder(
       purchase_units: [
         { description: description.slice(0, 127), amount: { currency_code: "USD", value } },
       ],
+      application_context: {
+        user_action: "PAY_NOW",
+        ...(returnUrl ? { return_url: returnUrl, cancel_url: returnUrl } : {}),
+      },
     }),
   });
   if (!res.ok) throw new Error(`PayPal order failed: ${res.status} ${await res.text()}`);

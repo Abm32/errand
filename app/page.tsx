@@ -39,6 +39,7 @@ export default function Home() {
   const [pick, setPick] = useState<Product | null>(null);
   const [decision, setDecision] = useState<Decision | null>(null);
   const [proposalId, setProposalId] = useState<string | null>(null);
+  const [approveUrl, setApproveUrl] = useState<string | null>(null);
   const [considered, setConsidered] = useState<Product[]>([]);
   const [ledger, setLedger] = useState<Entry[]>([]);
   const created = useRef(false);
@@ -75,7 +76,7 @@ export default function Home() {
 
   async function run(g: string = goal) {
     if (!mandateId) return;
-    setBusy(true); setReply(""); setPick(null); setDecision(null); setConsidered([]); setProposalId(null);
+    setBusy(true); setReply(""); setPick(null); setDecision(null); setConsidered([]); setProposalId(null); setApproveUrl(null);
     try {
       let id: string | null = mandateId;
       let res = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ goal: g, mandateId: id }) });
@@ -84,16 +85,18 @@ export default function Home() {
         if (id) res = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ goal: g, mandateId: id }) });
       }
       const d = await res.json();
-      setReply(d.reply ?? d.error ?? "");
       setConsidered(d.considered ?? []);
       setPick(d.pick ?? null);
       setDecision(d.decision ?? null);
       setProposalId(d.proposalId ?? null);
+      setApproveUrl(d.approveUrl ?? null);
       setLedger((l) => [...(d.entries ?? []), ...l]);
       if (d.mandate) setMandate(d.mandate);
+      setReply(d.settled ? `✅ Purchased ${d.pick?.title ?? pick?.title}. PayPal order ${d.order?.id}${d.order?.mock ? " (sandbox mock)" : ""}.` : (d.reply ?? d.error ?? ""));
     } finally { setBusy(false); }
   }
 
+  // Human approves a needs_approval proposal → create the PayPal order.
   async function approve() {
     if (!proposalId) return;
     setBusy(true);
@@ -102,8 +105,31 @@ export default function Home() {
       const d = await res.json();
       setLedger((l) => [...(d.entries ?? []), ...l]);
       if (d.mandate) setMandate(d.mandate);
-      setReply(d.error ?? `Purchased ${pick?.title}. PayPal order ${d.order?.id}${d.order?.mock ? " (sandbox mock)" : ""}.`);
-      setDecision(null); setPick(null); setProposalId(null);
+      if (d.settled) { // mock settles immediately
+        setReply(`✅ Purchased ${pick?.title}. PayPal order ${d.order?.id}${d.order?.mock ? " (sandbox mock)" : ""}.`);
+        setDecision(null); setPick(null); setProposalId(null); setApproveUrl(null);
+      } else { // live sandbox: open PayPal for buyer approval, then capture
+        setApproveUrl(d.approveUrl ?? null);
+        setReply(d.error ?? "Order created. Approve it in PayPal, then complete the purchase.");
+      }
+    } finally { setBusy(false); }
+  }
+
+  // After the buyer approved the order in PayPal, capture (settle) it.
+  async function complete() {
+    if (!proposalId) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/agent", { method: "PATCH", body: JSON.stringify({ proposalId }) });
+      const d = await res.json();
+      setLedger((l) => [...(d.entries ?? []), ...l]);
+      if (d.mandate) setMandate(d.mandate);
+      if (d.settled) {
+        setReply(`✅ Purchased ${pick?.title}. PayPal order ${d.order?.id} settled.`);
+        setDecision(null); setPick(null); setProposalId(null); setApproveUrl(null);
+      } else {
+        setReply(d.error ?? "Not settled yet — approve the order in PayPal first.");
+      }
     } finally { setBusy(false); }
   }
 
@@ -182,12 +208,23 @@ export default function Home() {
                     <div className={`mt-3 inline-block rounded-md border px-2 py-1 text-xs ${badge(decision.verdict)}`}>
                       {decision.verdict.replace("_", " ")} — {decision.reason}
                     </div>
-                    {decision.verdict === "needs_approval" && proposalId && (
+                    {approveUrl ? (
+                      <div className="mt-3 space-y-2">
+                        <a href={approveUrl} target="_blank" rel="noreferrer"
+                          className="block w-full rounded-lg bg-[#0070E0] py-2 text-center text-sm font-semibold hover:bg-[#0059b3]">
+                          Open PayPal to approve ↗
+                        </a>
+                        <button onClick={complete} disabled={busy}
+                          className="block w-full rounded-lg bg-emerald-500 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50">
+                          {busy ? "Settling…" : "I approved — complete purchase"}
+                        </button>
+                      </div>
+                    ) : decision.verdict === "needs_approval" && proposalId ? (
                       <button onClick={approve} disabled={busy}
                         className="mt-3 block w-full rounded-lg bg-emerald-500 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50">
                         {busy ? "Paying…" : "Approve & pay with PayPal"}
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </div>

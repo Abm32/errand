@@ -11,8 +11,10 @@
 import type { Mandate } from "./mandate";
 import type { Product } from "./adapters/channel3";
 
+type Pending = { id: string; mandateId: string; product: Product; orderId?: string };
+
 const mandates = new Map<string, Mandate>();
-const pending = new Map<string, { id: string; mandateId: string; product: Product }>();
+const pending = new Map<string, Pending>();
 
 let seq = 0;
 const id = (p: string) => `${p}_${++seq}_${Math.random().toString(36).slice(2, 8)}`;
@@ -55,3 +57,8 @@ export function savePending(mandateId: string, product: Product): string {
 
 export const getPending = (pid: string) => pending.get(pid);
 export const dropPending = (pid: string) => pending.delete(pid);
+
+export function setPendingOrder(pid: string, orderId: string) {
+  const p = pending.get(pid);
+  if (p) pending.set(pid, { ...p, orderId });
+}
