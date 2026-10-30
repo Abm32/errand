@@ -1,10 +1,11 @@
 # Render blueprint — deploy Errand as a single long-lived web service.
-# A single instance means the in-memory mandate store persists across requests
-# for the whole demo (no cold-instance 404s). Add the secrets in the Render
-# dashboard; the app also runs fully in mock mode with none of them set.
+# The store/ledger are file-backed (lib/store.ts, lib/ledger.ts), so state
+# survives restarts; a single instance keeps that one file authoritative and
+# avoids cross-instance splits. Add the secrets in the Render dashboard; the app
+# also runs fully in mock mode with none of them set.
 #
-# ponytail: single instance is the demo-grade fix. For multi-instance / true
-# durability, back lib/store.ts + lib/ledger.ts with Postgres and drop numInstances.
+# ponytail: single instance + file store is the demo-grade fix. For
+# multi-instance / high concurrency, back the store with Postgres and drop numInstances.
 services:
   - type: web
     name: errand
@@ -23,6 +24,8 @@ services:
         sync: false
       - key: PAYPAL_ENV
         value: sandbox
+      - key: PAYPAL_CURRENCY
+        value: USD
       - key: CHANNEL3_API_KEY
         sync: false
       - key: AI_GATEWAY_API_KEY
