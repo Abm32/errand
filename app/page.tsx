@@ -13,6 +13,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, MotionConfig, useReducedMotion } from "framer-motion";
+import { ShieldCheck, Sparkles, Wallet, Receipt, ScanSearch } from "lucide-react";
 
 type Product = { id: string; title: string; priceCents: number; category: string; merchant: string; url: string };
 type Decision = { verdict: "auto_approve" | "needs_approval" | "deny"; reason: string };
@@ -190,7 +191,13 @@ export default function Home() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <main className="min-h-screen text-slate-100 selection:bg-[#3b7dff]/30">
+      <main className="relative min-h-screen overflow-hidden text-slate-100 selection:bg-[#3b7dff]/30">
+        {/* Aurora — drifting color fields behind everything */}
+        <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+          <div className="aurora-blob drift-a" style={{ top: "-12%", right: "-6%", width: "48rem", height: "40rem", background: "radial-gradient(circle, rgba(59,125,255,0.45), transparent 62%)" }} />
+          <div className="aurora-blob drift-b" style={{ bottom: "-18%", left: "-10%", width: "46rem", height: "40rem", background: "radial-gradient(circle, rgba(106,91,255,0.40), transparent 62%)" }} />
+          <div className="aurora-blob drift-c" style={{ top: "28%", left: "38%", width: "34rem", height: "30rem", background: "radial-gradient(circle, rgba(143,182,255,0.18), transparent 60%)" }} />
+        </div>
         <div className="relative mx-auto max-w-5xl px-4 py-10">
           <motion.header initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={SPRING.stiff} className="mb-9">
             <div className="flex items-center gap-2.5">
@@ -220,6 +227,27 @@ export default function Home() {
             </div>
           </motion.header>
 
+          {/* Feature band */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.smooth, delay: 0.12 }}
+            className="mb-6 grid gap-3 sm:grid-cols-3">
+            {([
+              [ShieldCheck, "Server-enforced Mandate", "Budget, caps, categories — the agent can't exceed them."],
+              [Sparkles, "Reasons with Meta Muse", "A real model picks the best buy within your limits."],
+              [Wallet, "Real PayPal settlement", "Every charge is an actual capture — hands-free when vaulted."],
+            ] as const).map(([Icon, t, d], i) => (
+              <motion.div key={t} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.snappy, delay: 0.14 + i * 0.05 }}
+                className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3.5 backdrop-blur">
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[#4d8bff]/30 bg-[#4d8bff]/10 text-[#8fb6ff]">
+                  <Icon size={16} strokeWidth={2} />
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-white">{t}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-slate-400">{d}</p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+
           <div className="grid gap-6 md:grid-cols-[1fr_340px]">
             {/* LEFT */}
             <section className="space-y-5">
@@ -242,7 +270,7 @@ export default function Home() {
                     ↺ Reset demo
                   </button>
                 </div>
-                <label htmlFor="goal" className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-400">Send your agent on an errand</label>
+                <label htmlFor="goal" className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400"><ScanSearch size={13} strokeWidth={2.2} /> Send your agent on an errand</label>
                 <textarea id="goal" value={goal} onChange={(e) => setGoal(e.target.value)} rows={2}
                   className="w-full resize-none rounded-lg border border-white/[0.07] bg-black/30 p-3 text-sm outline-none transition-colors focus:border-[#3b7dff]" />
                 <motion.button onClick={() => run()} disabled={busy || !mandateId}
@@ -345,7 +373,7 @@ export default function Home() {
               </AnimatePresence>
 
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
-                <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-400">Activity ledger</p>
+                <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400"><Receipt size={13} strokeWidth={2.2} /> Activity ledger</p>
                 {ledger.length === 0 ? (
                   <p className="text-xs text-slate-500">No activity yet. Run an errand to watch the agent work.</p>
                 ) : (
@@ -368,7 +396,7 @@ export default function Home() {
             {/* RIGHT */}
             <motion.aside initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.smooth, delay: 0.1 }} className="space-y-5">
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 backdrop-blur">
-                <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-400">Mandate</p>
+                <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400"><Wallet size={13} strokeWidth={2.2} /> Mandate</p>
                 <p className="mb-3 text-sm font-medium">{mandate.label}</p>
                 <div className="mb-2 h-2 overflow-hidden rounded-full bg-white/[0.07]">
                   <motion.div className="h-full origin-left rounded-full" style={{ backgroundColor: meterColor }}
