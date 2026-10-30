@@ -122,23 +122,31 @@ usable product, it uses PayPal at the core, and it demos in one clean flow.
 **Done (runs offline today):**
 - [x] Next.js 16 app scaffolded, builds clean.
 - [x] **Mandate engine** (`lib/mandate.ts`) + passing self-check (`npm test`).
-- [x] AI SDK tool-calling agent + deterministic fallback (`lib/agent.ts`).
-- [x] PayPal Orders v2 adapter (sandbox) + mock fallback.
-- [x] Channel3 adapter + mock catalog fallback.
-- [x] Chat UI: goal input, mandate card + live budget meter, approval flow, ledger.
-- [x] `/api/agent` (run) + approval (PUT) routes with re-screen on approval.
+- [x] AI SDK tool-calling agent that **drives the pick** via a `recommend` tool
+      (single loop, no discarded reasoning) + deterministic fallback (`lib/agent.ts`).
+- [x] **Server-authoritative mandate** (`lib/store.ts`): limits + running spend +
+      pending proposals live on the server. Verified the client cannot fake the
+      spent total or tamper a parked proposal's price.
+- [x] **Full PayPal capture flow** (`captureOrder`): create → capture → ledger
+      shows `order` + `captureId`; spend only increments on a real settlement.
+- [x] Channel3 adapter + multi-category mock (so the allowlist denial is demoable).
+- [x] Chat UI: goal input, mandate card (editable caps + categories, clamped
+      budget meter), approval flow, audit ledger — all reading server truth.
+- [x] `/api/mandate` (create/update) + `/api/agent` run (POST) & approve (PUT).
 
 **Left to do (priority order):**
-1. [ ] Add real keys; verify a **real PayPal sandbox order** appears in the dashboard.
+1. [ ] Add real keys; verify a **real PayPal sandbox order + capture** in the dashboard.
 2. [ ] Verify the **Channel3** live endpoint shape; fix adapter field names.
 3. [ ] Confirm the **AI model id** for your gateway/provider in `.env` (`AI_MODEL`).
-4. [ ] Capture the full **PayPal capture** step (approve URL → capture) so a buy
-       actually settles in sandbox, and show the captured status in the ledger.
-5. [ ] Polish: loading states, empty states, one or two product images.
+4. [ ] Auto-approve path in live sandbox needs a buyer-approved/**vaulted** payment
+       method (Orders v2 needs approval before capture) — wire PayPal Vault, or
+       demo the human-approved path for live settlement.
+5. [ ] Persist store to a DB (Prisma/Postgres) so mandates survive restarts.
 6. [ ] **Deploy** to Render; set env vars; smoke-test the hosted URL.
 7. [ ] Record the **demo video**; write the **Devpost** entry.
-8. [ ] (Stretch) Wire one **PayPal Agent Toolkit** action (e.g. send an invoice)
-       to show breadth. (Stretch) A background "price-watch" standing errand.
+8. [ ] (Stretch) Wire one real **PayPal Agent Toolkit** action (seller-side
+       invoice/payout) once keys are in — adds PayPal depth. (Stretch) background
+       "price-watch" standing errand.
 
 ---
 

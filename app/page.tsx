@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Product = { id: string; title: string; priceCents: number; category: string; merchant: string; url: string };
 type Decision = { verdict: "auto_approve" | "needs_approval" | "deny"; reason: string };
-type Entry = { id: string; at: number; kind: string; summary: string; detail?: string; amountCents?: number; orderId?: string; approveUrl?: string };
+type Entry = { id: string; at: number; kind: string; summary: string; detail?: string; amountCents?: number; orderId?: string; captureId?: string; approveUrl?: string; proposalId?: string };
 type Mandate = {
   label: string; budgetCents: number; perItemCapCents: number; autoApproveUnderCents: number;
   allowedCategories?: string[]; spentCents: number;
@@ -12,57 +12,78 @@ type Mandate = {
 
 const dollars = (c: number) => `$${(c / 100).toFixed(2)}`;
 
+const DEFAULT = {
+  label: "Mom's birthday gift",
+  budgetCents: 5000,
+  perItemCapCents: 4000,
+  autoApproveUnderCents: 2000,
+  allowedCategories: ["gardening", "books"],
+};
+
 export default function Home() {
-  const [mandate, setMandate] = useState<Mandate>({
-    label: "Mom's birthday gift",
-    budgetCents: 5000,
-    perItemCapCents: 4000,
-    autoApproveUnderCents: 2000,
-    allowedCategories: ["gardening", "books"],
-    spentCents: 0,
-  });
+  const [mandateId, setMandateId] = useState<string | null>(null);
+  const [mandate, setMandate] = useState<Mandate>({ ...DEFAULT, spentCents: 0 });
   const [goal, setGoal] = useState("Find a birthday gift for my mom who loves gardening, under $40");
   const [busy, setBusy] = useState(false);
-  const [reply, setReply] = useState<string>("");
+  const [reply, setReply] = useState("");
   const [pick, setPick] = useState<Product | null>(null);
   const [decision, setDecision] = useState<Decision | null>(null);
+  const [proposalId, setProposalId] = useState<string | null>(null);
   const [considered, setConsidered] = useState<Product[]>([]);
   const [ledger, setLedger] = useState<Entry[]>([]);
+  const created = useRef(false);
 
-  const setDollar = (k: keyof Mandate, v: string) =>
-    setMandate((m) => ({ ...m, [k]: Math.round(parseFloat(v || "0") * 100) }));
+  // Create the mandate on the server once; the browser only holds its id.
+  useEffect(() => {
+    if (created.current) return;
+    created.current = true;
+    fetch("/api/mandate", { method: "POST", body: JSON.stringify(DEFAULT) })
+      .then((r) => r.json())
+      .then((d) => { setMandateId(d.mandateId); setMandate(d.mandate); });
+  }, []);
+
+  async function pushCaps(patch: Partial<Mandate>) {
+    if (!mandateId) return;
+    const next = { ...mandate, ...patch };
+    setMandate(next); // optimistic
+    const r = await fetch("/api/mandate", { method: "POST", body: JSON.stringify({ mandateId, ...next }) });
+    const d = await r.json();
+    if (d.mandate) setMandate(d.mandate);
+  }
+
+  const onCap = (k: keyof Mandate, v: string) => pushCaps({ [k]: Math.round(parseFloat(v || "0") * 100) } as Partial<Mandate>);
 
   async function run() {
-    setBusy(true); setReply(""); setPick(null); setDecision(null); setConsidered([]);
+    if (!mandateId) return;
+    setBusy(true); setReply(""); setPick(null); setDecision(null); setConsidered([]); setProposalId(null);
     try {
-      const res = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ goal, mandate }) });
+      const res = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ goal, mandateId }) });
       const d = await res.json();
       setReply(d.reply ?? d.error ?? "");
       setConsidered(d.considered ?? []);
       setPick(d.pick ?? null);
       setDecision(d.decision ?? null);
+      setProposalId(d.proposalId ?? null);
       setLedger((l) => [...(d.entries ?? []), ...l]);
-      if (d.spentDeltaCents) setMandate((m) => ({ ...m, spentCents: m.spentCents + d.spentDeltaCents }));
+      if (d.mandate) setMandate(d.mandate);
     } finally { setBusy(false); }
   }
 
   async function approve() {
-    if (!pick) return;
+    if (!proposalId) return;
     setBusy(true);
     try {
-      const res = await fetch("/api/agent", {
-        method: "PUT",
-        body: JSON.stringify({ mandate, pick: { title: pick.title, priceCents: pick.priceCents, category: pick.category, merchant: pick.merchant } }),
-      });
+      const res = await fetch("/api/agent", { method: "PUT", body: JSON.stringify({ proposalId }) });
       const d = await res.json();
       setLedger((l) => [...(d.entries ?? []), ...l]);
-      if (d.spentDeltaCents) setMandate((m) => ({ ...m, spentCents: m.spentCents + d.spentDeltaCents }));
-      setReply(d.error ?? `Purchased ${pick.title}. PayPal order ${d.order?.id}${d.order?.mock ? " (sandbox mock)" : ""}.`);
-      setDecision(null); setPick(null);
+      if (d.mandate) setMandate(d.mandate);
+      setReply(d.error ?? `Purchased ${pick?.title}. PayPal order ${d.order?.id}${d.order?.mock ? " (sandbox mock)" : ""}.`);
+      setDecision(null); setPick(null); setProposalId(null);
     } finally { setBusy(false); }
   }
 
   const remaining = Math.max(0, mandate.budgetCents - mandate.spentCents);
+  const pct = mandate.budgetCents > 0 ? Math.min(100, (mandate.spentCents / mandate.budgetCents) * 100) : 0;
   const badge = (v: string) =>
     v === "auto_approve" ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
     : v === "needs_approval" ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
@@ -78,19 +99,19 @@ export default function Home() {
               <h1 className="text-2xl font-semibold tracking-tight">Errand</h1>
               <p className="text-sm text-slate-400">An autonomous shopping agent that spends your money — only within a mandate you grant.</p>
             </div>
+            <span className="ml-auto rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">
+              {mandateId ? "mandate enforced server-side" : "connecting…"}
+            </span>
           </div>
         </header>
 
         <div className="grid gap-6 md:grid-cols-[1fr_340px]">
-          {/* Left: agent */}
           <section className="space-y-5">
             <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
               <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-400">Send your agent on an errand</label>
-              <textarea
-                value={goal} onChange={(e) => setGoal(e.target.value)} rows={2}
-                className="w-full resize-none rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm outline-none focus:border-[#0070E0]"
-              />
-              <button onClick={run} disabled={busy}
+              <textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={2}
+                className="w-full resize-none rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm outline-none focus:border-[#0070E0]" />
+              <button onClick={run} disabled={busy || !mandateId}
                 className="mt-3 w-full rounded-lg bg-[#0070E0] py-2.5 text-sm font-semibold hover:bg-[#0059b3] disabled:opacity-50">
                 {busy ? "Working…" : "Run errand"}
               </button>
@@ -111,10 +132,10 @@ export default function Home() {
                     <div className={`mt-3 inline-block rounded-md border px-2 py-1 text-xs ${badge(decision.verdict)}`}>
                       {decision.verdict.replace("_", " ")} — {decision.reason}
                     </div>
-                    {decision.verdict === "needs_approval" && (
+                    {decision.verdict === "needs_approval" && proposalId && (
                       <button onClick={approve} disabled={busy}
                         className="mt-3 block w-full rounded-lg bg-emerald-500 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50">
-                        Approve & pay with PayPal
+                        {busy ? "Paying…" : "Approve & pay with PayPal"}
                       </button>
                     )}
                   </div>
@@ -128,7 +149,7 @@ export default function Home() {
                 <div className="space-y-2">
                   {considered.map((p) => (
                     <div key={p.id} className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm">
-                      <span className="truncate">{p.title} <span className="text-slate-500">· {p.merchant}</span></span>
+                      <span className="truncate">{p.title} <span className="text-slate-500">· {p.merchant} · {p.category}</span></span>
                       <span className="shrink-0 pl-3 text-slate-300">{dollars(p.priceCents)}</span>
                     </div>
                   ))}
@@ -137,13 +158,12 @@ export default function Home() {
             )}
           </section>
 
-          {/* Right: mandate + ledger */}
           <aside className="space-y-5">
             <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
               <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-400">Mandate</p>
               <p className="mb-3 text-sm font-medium">{mandate.label}</p>
-              <div className="mb-3 h-2 overflow-hidden rounded-full bg-slate-800">
-                <div className="h-full bg-[#0070E0]" style={{ width: `${(mandate.spentCents / mandate.budgetCents) * 100}%` }} />
+              <div className="mb-2 h-2 overflow-hidden rounded-full bg-slate-800">
+                <div className="h-full bg-[#0070E0] transition-all" style={{ width: `${pct}%` }} />
               </div>
               <p className="mb-4 text-xs text-slate-400">{dollars(mandate.spentCents)} spent · {dollars(remaining)} left</p>
               {([
@@ -155,13 +175,21 @@ export default function Home() {
                   <span className="text-slate-400">{label}</span>
                   <span className="flex items-center gap-1">
                     <span className="text-slate-500">$</span>
-                    <input type="number" value={(mandate[k] as number) / 100} onChange={(e) => setDollar(k, e.target.value)}
+                    <input type="number" defaultValue={(mandate[k] as number) / 100} onBlur={(e) => onCap(k, e.target.value)}
                       className="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-right outline-none focus:border-[#0070E0]" />
                   </span>
                 </label>
               ))}
+              <label className="mt-2 block text-xs">
+                <span className="text-slate-400">Allowed categories</span>
+                <input
+                  defaultValue={(mandate.allowedCategories ?? []).join(", ")}
+                  onBlur={(e) => pushCaps({ allowedCategories: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                  placeholder="any category"
+                  className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 outline-none focus:border-[#0070E0]" />
+              </label>
               <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
-                Allowed: {mandate.allowedCategories?.join(", ") || "any category"}. The agent cannot spend outside these limits.
+                These limits and the amount spent live on the server. The agent cannot spend outside them — editing the numbers in the browser only changes your own mandate, it can&apos;t fake a purchase or the running total.
               </p>
             </div>
 
@@ -175,7 +203,7 @@ export default function Home() {
                     <li key={e.id} className="border-l-2 border-slate-700 pl-3 text-xs">
                       <p className="text-slate-200">{e.summary}</p>
                       {e.detail && <p className="text-slate-500">{e.detail}</p>}
-                      {e.orderId && <p className="text-[#4da3ff]">PayPal order {e.orderId}</p>}
+                      {e.orderId && <p className="text-[#4da3ff]">order {e.orderId}{e.captureId ? ` · capture ${e.captureId}` : ""}</p>}
                     </li>
                   ))}
                 </ol>

@@ -7,12 +7,14 @@
 export type LedgerEntry = {
   id: string;
   at: number;
-  kind: "search" | "recommend" | "auto_approved" | "awaiting_approval" | "denied" | "purchased";
+  kind: "search" | "recommend" | "awaiting_approval" | "denied" | "ordered" | "purchased";
   summary: string;
   detail?: string;
   amountCents?: number;
   orderId?: string;
+  captureId?: string;
   approveUrl?: string;
+  proposalId?: string;
 };
 
 const store: LedgerEntry[] = [];

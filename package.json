@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.92",
-    "@paypal/agent-toolkit": "^1.11.0",
     "ai": "^7.0.157",
     "next": "16.4.3",
     "react": "19.3.0",

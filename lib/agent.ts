@@ -1,13 +1,14 @@
 // The Errand agent: turn a plain-English goal into a safe, mandate-bound
-// purchase decision.
+// purchase recommendation.
 //
-// Primary path (when an AI key is set): a real AI SDK tool-calling loop — the
-// model searches the Channel3 catalog itself, then recommends one product.
-// Fallback path (no key): a deterministic planner so the whole flow still runs
-// for local demos and CI. Either way the decision goes through the Mandate
-// engine before any money moves.
+// Primary path (AI key set): one AI SDK tool-calling loop. The model searches
+// the catalog itself and then calls a `recommend` tool with its final pick —
+// the agent genuinely drives the decision (no separate post-hoc re-pick).
+// Fallback path (no key / AI error): a deterministic planner so the whole flow
+// still runs for local demos and CI. Either way the pick goes through the
+// Mandate engine before any money moves.
 
-import { generateText, generateObject, tool, stepCountIs } from "ai";
+import { generateText, tool, stepCountIs } from "ai";
 import { z } from "zod";
 import { searchProducts, type Product } from "./adapters/channel3";
 import { screen, type Mandate, type Decision } from "./mandate";
@@ -33,20 +34,21 @@ function parseMaxCents(goal: string): number | undefined {
   return m ? Math.round(parseFloat(m[1]) * 100) : undefined;
 }
 
-// Deterministic planner: search, pick the best product that fits the budget,
-// screen it. Used when no AI key is set, or when the AI path errors.
+function decide(mandate: Mandate, p: Product): Decision {
+  return screen(mandate, { title: p.title, amountCents: p.priceCents, category: p.category, merchant: p.merchant });
+}
+
+// Deterministic planner used when no AI key is set, or the AI path errors.
+// Policy: it's a gift/shopping agent, so spend the budget well — pick the
+// nicest qualifying item within the price ceiling (highest-priced that fits),
+// then let the Mandate engine gate it.
 async function fallback(goal: string, mandate: Mandate, maxCents: number): Promise<AgentResult> {
   const found = await searchProducts(goal, maxCents);
-  const pick = found.sort((a, b) => a.priceCents - b.priceCents).at(-1); // best within budget
+  const pick = [...found].sort((a, b) => b.priceCents - a.priceCents)[0];
   if (!pick) {
     return { reply: "I couldn't find anything within your mandate's budget.", considered: found };
   }
-  const decision = screen(mandate, {
-    title: pick.title,
-    amountCents: pick.priceCents,
-    category: pick.category,
-    merchant: pick.merchant,
-  });
+  const decision = decide(mandate, pick);
   return {
     reply: `I found "${pick.title}" for $${(pick.priceCents / 100).toFixed(2)} from ${pick.merchant}. ${decision.reason}`,
     considered: found,
@@ -56,15 +58,11 @@ async function fallback(goal: string, mandate: Mandate, maxCents: number): Promi
 }
 
 export async function runAgent(goal: string, mandate: Mandate): Promise<AgentResult> {
-  const budgetCap = Math.min(
-    mandate.perItemCapCents,
-    mandate.budgetCents - mandate.spentCents,
-  );
+  const budgetCap = Math.min(mandate.perItemCapCents, mandate.budgetCents - mandate.spentCents);
   const maxCents = Math.min(parseMaxCents(goal) ?? budgetCap, budgetCap);
   const id = model();
 
   if (!id) return fallback(goal, mandate, maxCents);
-
   try {
     return await aiRun(goal, mandate, maxCents, id);
   } catch (err) {
@@ -74,8 +72,9 @@ export async function runAgent(goal: string, mandate: Mandate): Promise<AgentRes
 }
 
 async function aiRun(goal: string, mandate: Mandate, maxCents: number, id: string): Promise<AgentResult> {
-  // ---- AI tool-calling path ----
   let considered: Product[] = [];
+  let recommendation: { product: Product; reason: string } | null = null;
+
   const search = tool({
     description: "Search the product catalog. Returns products with id, title, priceCents, category, merchant.",
     inputSchema: z.object({
@@ -89,44 +88,44 @@ async function aiRun(goal: string, mandate: Mandate, maxCents: number, id: strin
     },
   });
 
+  const recommend = tool({
+    description: "Recommend exactly one product (by id, from a prior search) as the final choice. Call this once when decided.",
+    inputSchema: z.object({
+      productId: z.string(),
+      reason: z.string().describe("one friendly sentence explaining the choice"),
+    }),
+    execute: async ({ productId, reason }) => {
+      const product = considered.find((p) => p.id === productId);
+      if (!product) return { ok: false, error: "Unknown productId — search first and use a returned id." };
+      recommendation = { product, reason };
+      return { ok: true };
+    },
+  });
+
   const system =
     `You are Errand, an autonomous shopping agent. You spend the user's money ONLY within their mandate. ` +
     `Mandate: budget $${(mandate.budgetCents / 100).toFixed(2)}, per-item cap $${(mandate.perItemCapCents / 100).toFixed(2)}, ` +
     `auto-approve under $${(mandate.autoApproveUnderCents / 100).toFixed(2)}` +
     (mandate.allowedCategories?.length ? `, allowed categories: ${mandate.allowedCategories.join(", ")}` : "") +
-    `. Search the catalog, then recommend the single best product within budget. Never exceed the per-item cap.`;
+    `. Search the catalog, then call recommend() exactly once with the single best product within budget. Never exceed the per-item cap.`;
 
   await generateText({
     model: id,
     system,
     prompt: `Goal: ${goal}`,
-    tools: { search },
-    stopWhen: stepCountIs(5),
+    tools: { search, recommend },
+    stopWhen: stepCountIs(6),
   });
 
-  if (considered.length === 0) considered = await searchProducts(goal, maxCents);
-  if (considered.length === 0) {
-    return { reply: "I couldn't find anything within your mandate's budget.", considered };
+  // If the model didn't commit to a pick, fall back to the deterministic choice.
+  if (!recommendation) {
+    if (considered.length === 0) considered = await searchProducts(goal, maxCents);
+    const pick = [...considered].sort((a, b) => b.priceCents - a.priceCents)[0];
+    if (!pick) return { reply: "I couldn't find anything within your mandate's budget.", considered };
+    const decision = decide(mandate, pick);
+    return { reply: `I found "${pick.title}" for $${(pick.priceCents / 100).toFixed(2)}. ${decision.reason}`, considered, pick, decision };
   }
 
-  // Constrain the final pick to products actually found.
-  const { object } = await generateObject({
-    model: id,
-    schema: z.object({
-      productId: z.string(),
-      reply: z.string().describe("one friendly sentence explaining the choice"),
-    }),
-    prompt:
-      `Pick the best product for the goal "${goal}" from this list and explain in one sentence.\n` +
-      JSON.stringify(considered.map((p) => ({ id: p.id, title: p.title, priceCents: p.priceCents, merchant: p.merchant, category: p.category }))),
-  });
-
-  const pick = considered.find((p) => p.id === object.productId) ?? considered[0];
-  const decision = screen(mandate, {
-    title: pick.title,
-    amountCents: pick.priceCents,
-    category: pick.category,
-    merchant: pick.merchant,
-  });
-  return { reply: object.reply, considered, pick, decision };
+  const { product, reason } = recommendation;
+  return { reply: reason, considered, pick: product, decision: decide(mandate, product) };
 }

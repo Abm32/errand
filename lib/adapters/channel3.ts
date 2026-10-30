@@ -13,11 +13,24 @@ export type Product = {
 };
 
 const MOCK: Product[] = [
+  // gardening
   { id: "m1", title: "Ergonomic Garden Kneeler & Seat", priceCents: 2899, category: "gardening", merchant: "GreenThumb", url: "https://example.com/p/m1" },
   { id: "m2", title: "Heirloom Herb Seed Collection (12 pack)", priceCents: 1799, category: "gardening", merchant: "SeedVault", url: "https://example.com/p/m2" },
   { id: "m3", title: "Hand-Forged Copper Trowel", priceCents: 3400, category: "gardening", merchant: "GreenThumb", url: "https://example.com/p/m3" },
-  { id: "m4", title: "The Well-Tempered Garden (book)", priceCents: 1600, category: "books", merchant: "PageTurner", url: "https://example.com/p/m4" },
   { id: "m5", title: "Self-Watering Ceramic Planter", priceCents: 4200, category: "gardening", merchant: "PotShop", url: "https://example.com/p/m5" },
+  // books
+  { id: "m4", title: "The Well-Tempered Garden (book)", priceCents: 1600, category: "books", merchant: "PageTurner", url: "https://example.com/p/m4" },
+  { id: "m6", title: "Cooking for One — Cookbook", priceCents: 2200, category: "books", merchant: "PageTurner", url: "https://example.com/p/m6" },
+  // electronics (used to demonstrate an allowlist denial)
+  { id: "m7", title: "Wireless Noise-Cancelling Headphones", priceCents: 8900, category: "electronics", merchant: "SoundHub", url: "https://example.com/p/m7" },
+  { id: "m8", title: "Smart LED Desk Lamp", priceCents: 3200, category: "electronics", merchant: "SoundHub", url: "https://example.com/p/m8" },
+  // kitchen
+  { id: "m9", title: "Pour-Over Coffee Set", priceCents: 3800, category: "kitchen", merchant: "BrewCo", url: "https://example.com/p/m9" },
+  { id: "m10", title: "Cast-Iron Skillet 10in", priceCents: 2600, category: "kitchen", merchant: "BrewCo", url: "https://example.com/p/m10" },
+  // toys
+  { id: "m11", title: "Wooden Building Blocks (100 pc)", priceCents: 2400, category: "toys", merchant: "PlayWorks", url: "https://example.com/p/m11" },
+  // fashion
+  { id: "m12", title: "Merino Wool Scarf", priceCents: 4500, category: "fashion", merchant: "Knitwell", url: "https://example.com/p/m12" },
 ];
 
 export async function searchProducts(query: string, maxPriceCents?: number): Promise<Product[]> {

@@ -18,6 +18,14 @@ export type Order = {
   mock: boolean;
 };
 
+export type Capture = {
+  orderId: string;
+  captureId?: string;
+  status: string; // COMPLETED = money settled; else needs buyer approval first
+  settled: boolean;
+  mock: boolean;
+};
+
 async function accessToken(): Promise<string> {
   const id = process.env.PAYPAL_CLIENT_ID!;
   const secret = process.env.PAYPAL_CLIENT_SECRET!;
@@ -68,4 +76,32 @@ export async function createOrder(
   const data = await res.json();
   const approve = (data.links ?? []).find((l: { rel: string; href: string }) => l.rel === "approve" || l.rel === "payer-action");
   return { id: data.id, status: data.status, approveUrl: approve?.href, mock: false };
+}
+
+/**
+ * Capture (settle) an order. This is where money actually moves.
+ * Mock mode always settles. In live sandbox, capture succeeds only once the
+ * buyer (or a vaulted payment method) has approved the order — otherwise PayPal
+ * returns an error and we surface settled:false so the ledger stays truthful.
+ */
+export async function captureOrder(orderId: string): Promise<Capture> {
+  const configured =
+    process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET;
+
+  if (!configured || orderId.startsWith("MOCK-")) {
+    return { orderId, captureId: `CAP-${Date.now()}`, status: "COMPLETED", settled: true, mock: true };
+  }
+
+  const token = await accessToken();
+  const res = await fetch(`${BASE}/v2/checkout/orders/${orderId}/capture`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    // Most common: ORDER_NOT_APPROVED — buyer must approve via approveUrl first.
+    return { orderId, status: data?.name ?? `HTTP_${res.status}`, settled: false, mock: false };
+  }
+  const captureId = data?.purchase_units?.[0]?.payments?.captures?.[0]?.id;
+  return { orderId, captureId, status: data.status, settled: data.status === "COMPLETED", mock: false };
 }
