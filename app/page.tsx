@@ -7,7 +7,7 @@ type Decision = { verdict: "auto_approve" | "needs_approval" | "deny"; reason: s
 type Entry = { id: string; at: number; kind: string; summary: string; detail?: string; amountCents?: number; orderId?: string; captureId?: string; approveUrl?: string; proposalId?: string };
 type Mandate = {
   label: string; budgetCents: number; perItemCapCents: number; autoApproveUnderCents: number;
-  allowedCategories?: string[]; spentCents: number;
+  allowedCategories?: string[]; blockedMerchants?: string[]; expiresAt?: number; spentCents: number;
 };
 
 const dollars = (c: number) => `$${(c / 100).toFixed(2)}`;
@@ -18,7 +18,17 @@ const DEFAULT = {
   perItemCapCents: 4000,
   autoApproveUnderCents: 2000,
   allowedCategories: ["gardening", "books"],
+  blockedMerchants: [] as string[],
 };
+
+// Config we can replay to recreate a mandate if the server instance recycled
+// (the in-memory store lost it). Spent resets, which is fine for a demo and far
+// better than a hard 404 mid-flow.
+const configOf = (m: Mandate) => ({
+  label: m.label, budgetCents: m.budgetCents, perItemCapCents: m.perItemCapCents,
+  autoApproveUnderCents: m.autoApproveUnderCents, allowedCategories: m.allowedCategories,
+  blockedMerchants: m.blockedMerchants, expiresAt: m.expiresAt,
+});
 
 export default function Home() {
   const [mandateId, setMandateId] = useState<string | null>(null);
@@ -42,6 +52,16 @@ export default function Home() {
       .then((d) => { setMandateId(d.mandateId); setMandate(d.mandate); });
   }, []);
 
+  // Recreate the mandate from our local config if the server lost it (instance
+  // recycled). Returns a fresh mandateId; spent restarts at 0.
+  async function recreate(): Promise<string | null> {
+    const r = await fetch("/api/mandate", { method: "POST", body: JSON.stringify(configOf(mandate)) });
+    const d = await r.json();
+    if (!d.mandateId) return null;
+    setMandateId(d.mandateId); setMandate(d.mandate);
+    return d.mandateId;
+  }
+
   async function pushCaps(patch: Partial<Mandate>) {
     if (!mandateId) return;
     const next = { ...mandate, ...patch };
@@ -57,7 +77,12 @@ export default function Home() {
     if (!mandateId) return;
     setBusy(true); setReply(""); setPick(null); setDecision(null); setConsidered([]); setProposalId(null);
     try {
-      const res = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ goal, mandateId }) });
+      let id: string | null = mandateId;
+      let res = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ goal, mandateId: id }) });
+      if (res.status === 404) { // server lost the mandate — recreate and retry once
+        id = await recreate();
+        if (id) res = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ goal, mandateId: id }) });
+      }
       const d = await res.json();
       setReply(d.reply ?? d.error ?? "");
       setConsidered(d.considered ?? []);
@@ -187,6 +212,21 @@ export default function Home() {
                   onBlur={(e) => pushCaps({ allowedCategories: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
                   placeholder="any category"
                   className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 outline-none focus:border-[#0070E0]" />
+              </label>
+              <label className="mt-2 block text-xs">
+                <span className="text-slate-400">Blocked merchants</span>
+                <input
+                  defaultValue={(mandate.blockedMerchants ?? []).join(", ")}
+                  onBlur={(e) => pushCaps({ blockedMerchants: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                  placeholder="none"
+                  className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 outline-none focus:border-[#0070E0]" />
+              </label>
+              <label className="mt-2 flex items-center justify-between gap-2 text-xs">
+                <span className="text-slate-400">Expires</span>
+                <input type="date"
+                  defaultValue={mandate.expiresAt ? new Date(mandate.expiresAt).toISOString().slice(0, 10) : ""}
+                  onBlur={(e) => pushCaps({ expiresAt: e.target.value ? new Date(e.target.value + "T23:59:59").getTime() : undefined })}
+                  className="rounded border border-slate-700 bg-slate-950 px-2 py-1 outline-none focus:border-[#0070E0] [color-scheme:dark]" />
               </label>
               <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
                 These limits and the amount spent live on the server. The agent cannot spend outside them — editing the numbers in the browser only changes your own mandate, it can&apos;t fake a purchase or the running total.

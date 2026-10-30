@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
     perItemCapCents: Math.max(0, Math.round(body.perItemCapCents ?? 0)),
     autoApproveUnderCents: Math.max(0, Math.round(body.autoApproveUnderCents ?? 0)),
     allowedCategories: body.allowedCategories,
+    blockedMerchants: body.blockedMerchants,
     expiresAt: body.expiresAt,
   };
 
