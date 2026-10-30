@@ -85,7 +85,23 @@ npm test        # mandate engine self-check
 To go live, copy `.env.example` → `.env.local` and add PayPal sandbox keys
 (+ optionally Channel3 and an AI key). See `.env.example`.
 
+## Proof: a real PayPal transaction
+
+Errand settles real money in the PayPal **sandbox**, verified end-to-end:
+
+| | |
+|---|---|
+| Order ID | `79030757MA759121B` — status **COMPLETED** |
+| Capture ID | `4JY63429LB471803W` — status **COMPLETED** |
+| Amount | **USD 34.00** |
+| Flow | agent recommended → Mandate gated (needs approval) → human approved in PayPal → captured |
+
+Full verified capture response: [`docs/settlement-proof.json`](docs/settlement-proof.json)
+(fetched straight from PayPal's Orders v2 API). PayPal doesn't support INR, so the
+sandbox buyer is US-based and `PAYPAL_CURRENCY=USD`.
+
 ## Status
 
-Working prototype. Runs end-to-end offline today. See `HACKATHON.md` for the
-full strategy, research, and the remaining build checklist.
+Working prototype with a **real, verified sandbox settlement**. Also runs fully
+offline (mock catalog + mock PayPal) with zero keys. See `HACKATHON.md` for the
+full strategy, research, and remaining checklist.

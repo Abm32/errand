@@ -1,0 +1,119 @@
+{
+    "id": "79030757MA759121B",
+    "intent": "CAPTURE",
+    "status": "COMPLETED",
+    "payment_source": {
+        "paypal": {
+            "email_address": "sb-73b1s53635996@personal.example.com",
+            "account_id": "82A8Y5BA7TFHE",
+            "account_status": "VERIFIED",
+            "name": {
+                "given_name": "John",
+                "surname": "Doe"
+            },
+            "address": {
+                "country_code": "US"
+            }
+        }
+    },
+    "purchase_units": [
+        {
+            "reference_id": "default",
+            "amount": {
+                "currency_code": "USD",
+                "value": "34.00",
+                "breakdown": {}
+            },
+            "payee": {
+                "email_address": "sb-7g4h253553743@business.example.com",
+                "merchant_id": "HKL7YPR8W9FVJ"
+            },
+            "description": "Hand-Forged Copper Trowel",
+            "shipping": {
+                "name": {
+                    "full_name": "John Doe"
+                },
+                "address": {
+                    "address_line_1": "2211 N First St",
+                    "admin_area_2": "San Jose",
+                    "admin_area_1": "CA",
+                    "postal_code": "95131",
+                    "country_code": "US"
+                }
+            },
+            "payments": {
+                "captures": [
+                    {
+                        "id": "4JY63429LB471803W",
+                        "status": "COMPLETED",
+                        "amount": {
+                            "currency_code": "USD",
+                            "value": "34.00"
+                        },
+                        "final_capture": true,
+                        "seller_protection": {
+                            "status": "ELIGIBLE",
+                            "dispute_categories": [
+                                "ITEM_NOT_RECEIVED",
+                                "UNAUTHORIZED_TRANSACTION"
+                            ]
+                        },
+                        "seller_receivable_breakdown": {
+                            "gross_amount": {
+                                "currency_code": "USD",
+                                "value": "34.00"
+                            },
+                            "paypal_fee": {
+                                "currency_code": "USD",
+                                "value": "1.92"
+                            },
+                            "net_amount": {
+                                "currency_code": "USD",
+                                "value": "32.08"
+                            }
+                        },
+                        "links": [
+                            {
+                                "href": "https://api.sandbox.paypal.com/v2/payments/captures/4JY63429LB471803W",
+                                "rel": "self",
+                                "method": "GET"
+                            },
+                            {
+                                "href": "https://api.sandbox.paypal.com/v2/payments/captures/4JY63429LB471803W/refund",
+                                "rel": "refund",
+                                "method": "POST"
+                            },
+                            {
+                                "href": "https://api.sandbox.paypal.com/v2/checkout/orders/79030757MA759121B",
+                                "rel": "up",
+                                "method": "GET"
+                            }
+                        ],
+                        "create_time": "2026-10-30T18:06:56Z",
+                        "update_time": "2026-10-30T18:06:56Z"
+                    }
+                ]
+            }
+        }
+    ],
+    "payer": {
+        "name": {
+            "given_name": "John",
+            "surname": "Doe"
+        },
+        "email_address": "sb-73b1s53635996@personal.example.com",
+        "payer_id": "82A8Y5BA7TFHE",
+        "address": {
+            "country_code": "US"
+        }
+    },
+    "create_time": "2026-10-30T18:06:56Z",
+    "update_time": "2026-10-30T18:06:56Z",
+    "links": [
+        {
+            "href": "https://api.sandbox.paypal.com/v2/checkout/orders/79030757MA759121B",
+            "rel": "self",
+            "method": "GET"
+        }
+    ]
+}
