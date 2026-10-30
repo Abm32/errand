@@ -134,8 +134,14 @@ usable product, it uses PayPal at the core, and it demos in one clean flow.
       budget meter), approval flow, audit ledger — all reading server truth.
 - [x] `/api/mandate` (create/update) + `/api/agent` run (POST) & approve (PUT).
 
+**✅ LIVE PROOF (2026-10-30):** real PayPal sandbox settlement verified end-to-end —
+order `79030757MA759121B` / capture `4JY63429LB471803W`, status COMPLETED, USD 34.00.
+Agent recommended → Mandate gated (needs_approval) → human approved in PayPal → captured.
+Note: PayPal does not support INR; used USD + a US sandbox buyer
+(`sb-73b1s53635996@personal.example.com`). Set `PAYPAL_CURRENCY=USD`.
+
 **Left to do (priority order):**
-1. [ ] Add real keys; verify a **real PayPal sandbox order + capture** in the dashboard.
+1. [x] ~~Add real keys; verify a real PayPal sandbox order + capture.~~ DONE (see above).
 2. [ ] Verify the **Channel3** live endpoint shape; fix adapter field names.
 3. [ ] Confirm the **AI model id** for your gateway/provider in `.env` (`AI_MODEL`).
 4. [ ] Auto-approve path in live sandbox needs a buyer-approved/**vaulted** payment

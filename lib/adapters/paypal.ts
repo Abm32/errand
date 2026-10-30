@@ -60,6 +60,7 @@ export async function createOrder(
   }
 
   const token = await accessToken();
+  const currency = process.env.PAYPAL_CURRENCY ?? "USD"; // match the sandbox accounts' currency
   const res = await fetch(`${BASE}/v2/checkout/orders`, {
     method: "POST",
     headers: {
@@ -69,7 +70,7 @@ export async function createOrder(
     body: JSON.stringify({
       intent: "CAPTURE",
       purchase_units: [
-        { description: description.slice(0, 127), amount: { currency_code: "USD", value } },
+        { description: description.slice(0, 127), amount: { currency_code: currency, value } },
       ],
       application_context: {
         user_action: "PAY_NOW",
