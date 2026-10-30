@@ -5,6 +5,9 @@
 Submission for the [PayPal AI Hackathon 2026](https://paypalaihackathon.devpost.com/).
 Targets the **Best Use of Agentic Commerce** and **Best Use of PayPal + AI** categories.
 
+**▶ Live demo: https://errand-xl2n.onrender.com**
+_(Free Render instance — the very first request after idle can take ~50s to wake, then it's instant.)_
+
 ---
 
 ## The one-liner
