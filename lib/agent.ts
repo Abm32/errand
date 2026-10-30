@@ -22,15 +22,16 @@ export type AgentResult = {
 };
 
 function model(): LanguageModel | null {
-  // Preferred: Meta's Llama API (OpenAI-compatible), driven by the user's Meta key.
-  const metaKey = process.env.META_API_KEY ?? process.env.LLAMA_API_KEY;
+  // Preferred: Meta's model API (OpenAI-compatible), driven by the user's Meta key.
+  // Default to Meta Muse (muse-spark-1.3) at api.meta.ai; override via env.
+  const metaKey = process.env.META_API_KEY ?? process.env.MODEL_API_KEY ?? process.env.LLAMA_API_KEY;
   if (metaKey) {
-    const llama = createOpenAICompatible({
-      name: "meta-llama",
-      baseURL: process.env.META_BASE_URL ?? "https://api.llama.com/compat/v1",
+    const meta = createOpenAICompatible({
+      name: "meta",
+      baseURL: process.env.META_BASE_URL ?? process.env.MODEL_API_BASE_URL ?? "https://api.meta.ai/v1",
       apiKey: metaKey,
     });
-    return llama(process.env.META_MODEL ?? "Llama-4-Maverick-17B-128E-Instruct-FP8");
+    return meta(process.env.META_MODEL ?? process.env.MUSE_MODEL ?? "muse-spark-1.3");
   }
   // Otherwise route a plain model id through the Vercel AI Gateway.
   const hasKey =

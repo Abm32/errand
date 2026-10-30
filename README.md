@@ -64,7 +64,7 @@ action is written to a transparent audit ledger.
 app/page.tsx             UI: presets, goal input, mandate card, approval, ledger
 app/api/mandate/route.ts POST = create/update a server-held mandate (never accepts spent)
 app/api/agent/route.ts   POST = run errand (mandateId) · PUT = approve (proposalId)
-lib/agent.ts             AI SDK tool-calling agent (search + recommend); deterministic fallback
+lib/agent.ts             AI SDK tool-calling agent on Meta Muse (search + recommend); deterministic fallback
 lib/mandate.ts           ★ The trust layer: screens every purchase before money moves (tested)
 lib/store.ts             ★ Server-authoritative mandates, running spend, pending proposals (tested)
 lib/ledger.ts            Transparent audit log of every agent action

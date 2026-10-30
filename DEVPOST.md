@@ -27,7 +27,7 @@ PayPal shipped an Agent Toolkit and is co-authoring the AP2 agent-payment standa
 
 ## How we built it
 - **Next.js 16** (App Router) + TypeScript + Tailwind, deployed on **Render**.
-- **AI SDK 7** tool-calling agent — the model searches the catalog and calls a `recommend` tool to drive the pick (deterministic fallback so it always runs).
+- **AI SDK 7** tool-calling agent running on **Meta's Muse** (`muse-spark-1.3`, OpenAI-compatible endpoint) — the model searches the catalog and calls a `recommend` tool to drive the pick (deterministic fallback so it always runs).
 - **PayPal Orders v2** (sandbox): real create → approve → capture; spend increments only on a settled capture.
 - **Channel3** for product data (mock catalog fallback when no key).
 - The **Mandate engine** — a pure, tested policy module that is the single gate in front of every charge — plus a server-authoritative, file-backed store so the client can never fake its own limits or spend.
@@ -61,4 +61,4 @@ A verified sandbox settlement: PayPal order `79030757MA759121B`, capture `4JY634
 4. Click the **"Blocked by mandate"** preset → watch it get denied with a reason.
 
 ## Built with
-`next.js` · `typescript` · `ai-sdk` · `paypal` (orders v2, sandbox) · `channel3` · `tailwindcss` · `render`
+`next.js` · `typescript` · `ai-sdk` · `meta` (Muse / `muse-spark-1.3`) · `paypal` (orders v2, sandbox) · `channel3` · `tailwindcss` · `render`
