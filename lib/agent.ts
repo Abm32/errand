@@ -33,6 +33,28 @@ function parseMaxCents(goal: string): number | undefined {
   return m ? Math.round(parseFloat(m[1]) * 100) : undefined;
 }
 
+// Deterministic planner: search, pick the best product that fits the budget,
+// screen it. Used when no AI key is set, or when the AI path errors.
+async function fallback(goal: string, mandate: Mandate, maxCents: number): Promise<AgentResult> {
+  const found = await searchProducts(goal, maxCents);
+  const pick = found.sort((a, b) => a.priceCents - b.priceCents).at(-1); // best within budget
+  if (!pick) {
+    return { reply: "I couldn't find anything within your mandate's budget.", considered: found };
+  }
+  const decision = screen(mandate, {
+    title: pick.title,
+    amountCents: pick.priceCents,
+    category: pick.category,
+    merchant: pick.merchant,
+  });
+  return {
+    reply: `I found "${pick.title}" for $${(pick.priceCents / 100).toFixed(2)} from ${pick.merchant}. ${decision.reason}`,
+    considered: found,
+    pick,
+    decision,
+  };
+}
+
 export async function runAgent(goal: string, mandate: Mandate): Promise<AgentResult> {
   const budgetCap = Math.min(
     mandate.perItemCapCents,
@@ -41,27 +63,17 @@ export async function runAgent(goal: string, mandate: Mandate): Promise<AgentRes
   const maxCents = Math.min(parseMaxCents(goal) ?? budgetCap, budgetCap);
   const id = model();
 
-  // ---- Fallback planner (no AI key) ----
-  if (!id) {
-    const found = await searchProducts(goal, maxCents);
-    const pick = found.sort((a, b) => a.priceCents - b.priceCents).at(-1); // best within budget
-    if (!pick) {
-      return { reply: "I couldn't find anything within your mandate's budget.", considered: found };
-    }
-    const decision = screen(mandate, {
-      title: pick.title,
-      amountCents: pick.priceCents,
-      category: pick.category,
-      merchant: pick.merchant,
-    });
-    return {
-      reply: `I found "${pick.title}" for $${(pick.priceCents / 100).toFixed(2)} from ${pick.merchant}. ${decision.reason}`,
-      considered: found,
-      pick,
-      decision,
-    };
-  }
+  if (!id) return fallback(goal, mandate, maxCents);
 
+  try {
+    return await aiRun(goal, mandate, maxCents, id);
+  } catch (err) {
+    console.warn("AI path failed, using deterministic planner:", (err as Error).message);
+    return fallback(goal, mandate, maxCents);
+  }
+}
+
+async function aiRun(goal: string, mandate: Mandate, maxCents: number, id: string): Promise<AgentResult> {
   // ---- AI tool-calling path ----
   let considered: Product[] = [];
   const search = tool({

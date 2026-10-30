@@ -23,14 +23,14 @@ const MOCK: Product[] = [
 export async function searchProducts(query: string, maxPriceCents?: number): Promise<Product[]> {
   const key = process.env.CHANNEL3_API_KEY;
   if (!key) {
-    const q = query.toLowerCase();
-    return MOCK.filter(
-      (p) =>
-        (q === "" ||
-          p.title.toLowerCase().includes(q) ||
-          p.category.includes(q)) &&
-        (maxPriceCents === undefined || p.priceCents <= maxPriceCents),
-    );
+    // Token-based match so a full-sentence goal ("gift for mom who loves
+    // gardening") still hits "gardening" products. Stopwords are ignored.
+    const stop = new Set(["the", "a", "an", "for", "my", "who", "and", "under", "around", "with", "to", "of", "find", "buy", "me", "some", "nice", "cheap", "gift", "that", "loves", "is"]);
+    const tokens = query.toLowerCase().match(/[a-z]+/g)?.filter((t) => t.length > 2 && !stop.has(t)) ?? [];
+    const hay = (p: Product) => `${p.title} ${p.category} ${p.merchant}`.toLowerCase();
+    let matches = MOCK.filter((p) => tokens.length === 0 || tokens.some((t) => hay(p).includes(t)));
+    if (matches.length === 0) matches = MOCK; // never dead-end a demo
+    return matches.filter((p) => maxPriceCents === undefined || p.priceCents <= maxPriceCents);
   }
 
   // Real Channel3 search. Endpoint shape per Channel3 docs; adjust field names
