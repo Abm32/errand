@@ -1,4 +1,4 @@
-# Errand — the pitch (reuse for the Devpost write-up)
+# Gofer — the pitch (reuse for the Devpost write-up)
 
 ## Inspiration
 AI agents can now browse, reason, and check out on their own. The 2025–2026 wave
@@ -9,7 +9,7 @@ money. Most hackathon shopping bots just... spend. That's a demo, not a product
 anyone would actually run.
 
 ## What it does
-Errand is a shopping agent you send on an **errand** with a **mandate**:
+Gofer is a shopping agent you send on an **errand** with a **mandate**:
 
 - a **budget** (total it may spend),
 - a **per-item cap** (hard ceiling on any single buy),

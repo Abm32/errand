@@ -1,4 +1,4 @@
-# Errand 🪄
+# Gofer 🪄
 
 **An autonomous shopping agent that spends your money — only within a mandate you grant.**
 
@@ -15,7 +15,7 @@ _(Free Render instance — the very first request after idle can take ~50s to wa
 Everyone is building AI agents that can spend money. Nobody is answering the
 scary question: *how do you let an agent spend money safely?*
 
-Errand is an AI shopping agent with a **Mandate** trust layer. You give it a
+Gofer is an AI shopping agent with a **Mandate** trust layer. You give it a
 goal in plain English and a mandate — a budget, a per-item cap, an auto-approve
 limit, and allowed categories. The agent researches real products, picks the
 best one, and **every proposed purchase passes through the Mandate engine before
@@ -27,7 +27,7 @@ action is written to a transparent audit ledger.
 
 ## Why it wins (rubric fit)
 
-| Criterion | How Errand scores |
+| Criterion | How Gofer scores |
 |---|---|
 | **Technological implementation** | Real AI SDK tool-calling agent + real PayPal Orders v2 (sandbox) + Channel3 product data. |
 | **Design** | A complete, usable product, not a demo script. Mandate card, live budget meter, approval flow, audit ledger. |
@@ -41,7 +41,7 @@ action is written to a transparent audit ledger.
             goal (plain English)
                    │
            ┌───────▼────────┐   searches    ┌──────────────┐
-           │  Errand agent  │──────────────▶│   Channel3   │
+           │  Gofer agent  │──────────────▶│   Channel3   │
            │ (AI SDK tools) │◀──────────────│  (products)  │
            └───────┬────────┘   products    └──────────────┘
                    │ recommends one product
@@ -90,7 +90,7 @@ To go live, copy `.env.example` → `.env.local` and add PayPal sandbox keys
 
 ## Proof: a real PayPal transaction
 
-Errand settles real money in the PayPal **sandbox**, verified end-to-end:
+Gofer settles real money in the PayPal **sandbox**, verified end-to-end:
 
 | | |
 |---|---|

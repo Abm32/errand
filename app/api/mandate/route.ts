@@ -8,7 +8,7 @@ import type { Mandate } from "@/lib/mandate";
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as Partial<Mandate> & { mandateId?: string };
   const config = {
-    label: body.label ?? "Errand",
+    label: body.label ?? "Gofer",
     budgetCents: Math.max(0, Math.round(body.budgetCents ?? 0)),
     perItemCapCents: Math.max(0, Math.round(body.perItemCapCents ?? 0)),
     autoApproveUnderCents: Math.max(0, Math.round(body.autoApproveUnderCents ?? 0)),

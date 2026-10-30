@@ -1,6 +1,6 @@
-# Errand — Devpost submission (ready to paste)
+# Gofer — Devpost submission (ready to paste)
 
-**Project name:** Errand
+**Project name:** Gofer
 
 **Tagline:** An autonomous shopping agent that spends your money — only within a mandate you grant.
 
@@ -11,7 +11,7 @@
 ---
 
 ## Elevator pitch
-Everyone is building AI agents that can spend money. Nobody is answering the scary question: how do you let one spend money *safely*? Errand is an AI shopping agent wrapped in a **Mandate** — a server-enforced spend authorization (budget, per-item cap, auto-approve threshold, category allowlist, blocked merchants, expiry). The agent researches and buys via real PayPal checkout, but every purchase passes the Mandate gate first, and every action is written to a transparent audit ledger. Agentic commerce needs an agentic wallet — the Mandate is that wallet.
+Everyone is building AI agents that can spend money. Nobody is answering the scary question: how do you let one spend money *safely*? Gofer is an AI shopping agent wrapped in a **Mandate** — a server-enforced spend authorization (budget, per-item cap, auto-approve threshold, category allowlist, blocked merchants, expiry). The agent researches and buys via real PayPal checkout, but every purchase passes the Mandate gate first, and every action is written to a transparent audit ledger. Agentic commerce needs an agentic wallet — the Mandate is that wallet.
 
 ## Inspiration
 PayPal shipped an Agent Toolkit and is co-authoring the AP2 agent-payment standard — the "agentic commerce" era is real. But the moment you let autonomous software hold a card, you've created a trust problem most demos ignore: they just spend. We wanted the opposite — the guardrail as the product.

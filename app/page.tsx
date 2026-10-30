@@ -1,7 +1,7 @@
 "use client";
 
 /*
-  Errand UI — choreography
+  Gofer UI — choreography
   mount ........... header + panels settle in (stiff/smooth springs)
   run ............. agent orb spins up; thinking steps reveal one by one:
                     0ms   "Searching the catalog"      spinner → check
@@ -183,7 +183,7 @@ export default function Home() {
             <div className="flex items-center gap-3">
               <AgentOrb active={thinking} reduce={!!reduce} />
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight">Errand</h1>
+                <h1 className="text-2xl font-semibold tracking-tight">Gofer</h1>
                 <p className="text-sm text-slate-400">An autonomous shopping agent that spends your money — only within a mandate you grant.</p>
               </div>
               <span className="ml-auto hidden items-center gap-2 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1 text-xs text-slate-400 sm:flex">
@@ -402,7 +402,7 @@ function AgentOrb({ active, reduce }: { active: boolean; reduce: boolean }) {
       <motion.div className="relative grid h-9 w-9 place-items-center rounded-[10px] bg-gradient-to-b from-[#1a86ff] to-[#0070E0] font-bold"
         animate={active && !reduce ? { scale: [1, 1.08, 1] } : { scale: 1 }}
         transition={active ? { repeat: Infinity, duration: 1.1, ease: "easeInOut" } : SPRING.snappy}>
-        E
+        G
       </motion.div>
     </div>
   );

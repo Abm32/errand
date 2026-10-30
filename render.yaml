@@ -1,4 +1,4 @@
-# Render blueprint — deploy Errand as a single long-lived web service.
+# Render blueprint — deploy Gofer as a single long-lived web service.
 # The store/ledger are file-backed (lib/store.ts, lib/ledger.ts), so state
 # survives restarts; a single instance keeps that one file authoritative and
 # avoids cross-instance splits. Add the secrets in the Render dashboard; the app

@@ -64,7 +64,7 @@ From PayPal's own tips + recent payments/agent hackathon winners
 
 ---
 
-## 3. Our bet: **Errand**
+## 3. Our bet: **Gofer**
 
 An autonomous shopping agent whose product *is the guardrail*: a **Mandate**
 trust layer (budget, per-item cap, auto-approve threshold, category allowlist,
@@ -161,7 +161,7 @@ Note: PayPal does not support INR; used USD + a US sandbox buyer
 ## 6. Demo script (<3 min)
 
 1. **(20s) Problem.** "AI agents can now spend money. Would you give one your
-   card? Errand makes that safe."
+   card? Gofer makes that safe."
 2. **(30s) Mandate.** Show the mandate card: $50 budget, $40 cap, auto-approve
    under $20, categories = gardening/books. "This is the agent's wallet. It
    physically cannot spend outside this."

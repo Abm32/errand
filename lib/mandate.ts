@@ -1,4 +1,4 @@
-// The Mandate engine — Errand's trust layer.
+// The Mandate engine — Gofer's trust layer.
 // An AI agent may spend money ONLY within a mandate the user granted.
 // Every proposed purchase is screened here before any PayPal call is made.
 // This is deliberately a pure, dependency-free module so it is easy to test

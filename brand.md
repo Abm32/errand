@@ -1,4 +1,4 @@
-# Brand — Errand
+# Brand — Gofer
 
 _Status: active (inline tokens; not a shadcn theme)_
 

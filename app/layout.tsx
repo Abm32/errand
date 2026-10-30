@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Errand — the agent that spends your money safely",
+  title: "Gofer — the agent that spends your money safely",
   description: "An autonomous shopping agent that transacts via PayPal, strictly within a mandate you grant.",
 };
 

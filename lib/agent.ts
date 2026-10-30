@@ -1,4 +1,4 @@
-// The Errand agent: turn a plain-English goal into a safe, mandate-bound
+// The Gofer agent: turn a plain-English goal into a safe, mandate-bound
 // purchase recommendation.
 //
 // Primary path (AI key set): one AI SDK tool-calling loop. The model searches
@@ -114,7 +114,7 @@ async function aiRun(goal: string, mandate: Mandate, maxCents: number, m: Langua
   });
 
   const system =
-    `You are Errand, an autonomous shopping agent. You spend the user's money ONLY within their mandate. ` +
+    `You are Gofer, an autonomous shopping agent. You spend the user's money ONLY within their mandate. ` +
     `Mandate: budget $${(mandate.budgetCents / 100).toFixed(2)}, per-item cap $${(mandate.perItemCapCents / 100).toFixed(2)}, ` +
     `auto-approve under $${(mandate.autoApproveUnderCents / 100).toFixed(2)}` +
     (mandate.allowedCategories?.length ? `, allowed categories: ${mandate.allowedCategories.join(", ")}` : "") +
