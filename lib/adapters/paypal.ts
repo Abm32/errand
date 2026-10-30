@@ -15,6 +15,7 @@ export type Order = {
   id: string;
   status: string;
   approveUrl?: string;
+  captureId?: string; // present when a vaulted order settles on create (COMPLETED)
   mock: boolean;
 };
 
@@ -64,11 +65,12 @@ export async function createOrder(
   const currency = process.env.PAYPAL_CURRENCY ?? "USD"; // match the sandbox accounts' currency
 
   // Vaulted (merchant-initiated): charge a saved wallet with no buyer present.
+  // With a vault_id the order settles on create (status COMPLETED) — no approval.
   const body = vaultId
     ? {
         intent: "CAPTURE",
         purchase_units: [{ description: description.slice(0, 127), amount: { currency_code: currency, value } }],
-        payment_source: { paypal: { attributes: { vault_id: vaultId } } },
+        payment_source: { paypal: { vault_id: vaultId } },
       }
     : {
         intent: "CAPTURE",
@@ -78,13 +80,19 @@ export async function createOrder(
 
   const res = await fetch(`${BASE}/v2/checkout/orders`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      // Required when a payment_source is supplied (vaulted/merchant-initiated).
+      "PayPal-Request-Id": `ord-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`PayPal order failed: ${res.status} ${await res.text()}`);
   const data = await res.json();
   const approve = (data.links ?? []).find((l: { rel: string; href: string }) => l.rel === "approve" || l.rel === "payer-action");
-  return { id: data.id, status: data.status, approveUrl: approve?.href, mock: false };
+  const captureId = data?.purchase_units?.[0]?.payments?.captures?.[0]?.id;
+  return { id: data.id, status: data.status, approveUrl: approve?.href, captureId, mock: false };
 }
 
 // ---- Vault: save a PayPal wallet once, then charge it hands-free ----

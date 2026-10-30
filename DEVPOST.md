@@ -49,8 +49,15 @@ A verified sandbox settlement: PayPal order `79030757MA759121B`, capture `4JY634
 - Agentic commerce's hard part isn't the buying — it's the authorization and the audit trail.
 - Human-in-the-loop above a threshold is both safer and exactly what payment platforms reward.
 
+## Hands-free autonomous settle (PayPal Vault)
+Link a PayPal wallet once (one consent). After that, auto-approved buys settle
+**with zero human taps** — the agent charges the vaulted wallet merchant-initiated.
+Verified live in sandbox: order `7EJ69827R0142404N` / capture `74C39317EM342512H`,
+COMPLETED, USD 17.99, no approval step. This is true agentic commerce: search →
+reason (Meta Muse) → Mandate gate → settle, autonomously, still inside your limits.
+
 ## What's next
-- **PayPal Vault** for true no-human autonomous settlement under the auto-approve limit.
+- Signed, portable AP2-style mandate tokens; standing "price-watch" errands.
 - Wire the **PayPal Agent Toolkit** seller-side surface (invoices, payouts, disputes).
 - Signed, portable AP2-style mandate tokens; standing "price-watch" background errands.
 

@@ -29,6 +29,8 @@ function finalize(mandateId: string, pid: string, p: Product, orderId: string, c
 async function createAndTry(req: NextRequest, mandateId: string, pid: string, p: Product, approvedByHuman: boolean, vaultId?: string) {
   const order = await createOrder(p.title, p.priceCents, returnUrl(req), vaultId);
   setPendingOrder(pid, order.id);
+  // Vaulted orders settle on create (COMPLETED) — no separate capture, no human.
+  if (order.status === "COMPLETED") return finalize(mandateId, pid, p, order.id, order.captureId, approvedByHuman, order.mock, !!vaultId);
   const cap = await captureOrder(order.id);
   if (cap.settled) return finalize(mandateId, pid, p, order.id, cap.captureId, approvedByHuman, order.mock, !!vaultId);
   const entry = record({
