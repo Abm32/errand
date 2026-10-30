@@ -22,8 +22,21 @@ export type AgentResult = {
 };
 
 function model(): LanguageModel | null {
-  // Preferred: Meta's model API (OpenAI-compatible), driven by the user's Meta key.
-  // Default to Meta Muse (muse-spark-1.3) at api.meta.ai; override via env.
+  // Baseten first when configured: hosts the open Meta Muse model from its own
+  // infra, so it works from any region (api.meta.ai gates its catalog by
+  // region/IP, which breaks on cloud hosts like Render). Same Meta model family.
+  const basetenKey = process.env.BASETEN_API_KEY;
+  if (basetenKey) {
+    const baseten = createOpenAICompatible({
+      name: "baseten",
+      baseURL: process.env.BASETEN_BASE_URL ?? "https://inference.baseten.co/v1",
+      apiKey: basetenKey,
+    });
+    return baseten(process.env.BASETEN_MODEL ?? "meta-models/muse-spark-open-1026");
+  }
+  // Meta's model API direct (OpenAI-compatible), driven by the user's Meta key.
+  // Default to Meta Muse (muse-spark-1.3) at api.meta.ai. Works from entitled
+  // regions (e.g. local dev); see Baseten above for cloud hosts.
   const metaKey = process.env.META_API_KEY ?? process.env.MODEL_API_KEY ?? process.env.LLAMA_API_KEY;
   if (metaKey) {
     const meta = createOpenAICompatible({
