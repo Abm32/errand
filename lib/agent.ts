@@ -8,7 +8,8 @@
 // still runs for local demos and CI. Either way the pick goes through the
 // Mandate engine before any money moves.
 
-import { generateText, tool, stepCountIs } from "ai";
+import { generateText, tool, stepCountIs, type LanguageModel } from "ai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { z } from "zod";
 import { searchProducts, type Product } from "./adapters/channel3";
 import { screen, type Mandate, type Decision } from "./mandate";
@@ -20,12 +21,21 @@ export type AgentResult = {
   decision?: Decision;
 };
 
-function model() {
-  // Prefer an explicit model id; route through the Vercel AI Gateway by default.
-  const id = process.env.AI_MODEL ?? "anthropic/claude-sonnet-4.5";
+function model(): LanguageModel | null {
+  // Preferred: Meta's Llama API (OpenAI-compatible), driven by the user's Meta key.
+  const metaKey = process.env.META_API_KEY ?? process.env.LLAMA_API_KEY;
+  if (metaKey) {
+    const llama = createOpenAICompatible({
+      name: "meta-llama",
+      baseURL: process.env.META_BASE_URL ?? "https://api.llama.com/compat/v1",
+      apiKey: metaKey,
+    });
+    return llama(process.env.META_MODEL ?? "Llama-4-Maverick-17B-128E-Instruct-FP8");
+  }
+  // Otherwise route a plain model id through the Vercel AI Gateway.
   const hasKey =
     process.env.ANTHROPIC_API_KEY || process.env.AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY;
-  return hasKey ? id : null;
+  return hasKey ? (process.env.AI_MODEL ?? "anthropic/claude-sonnet-4.5") : null;
 }
 
 /** Parse a rough max price (in cents) out of a free-text goal, e.g. "under $50". */
@@ -60,18 +70,18 @@ async function fallback(goal: string, mandate: Mandate, maxCents: number): Promi
 export async function runAgent(goal: string, mandate: Mandate): Promise<AgentResult> {
   const budgetCap = Math.min(mandate.perItemCapCents, mandate.budgetCents - mandate.spentCents);
   const maxCents = Math.min(parseMaxCents(goal) ?? budgetCap, budgetCap);
-  const id = model();
+  const m = model();
 
-  if (!id) return fallback(goal, mandate, maxCents);
+  if (!m) return fallback(goal, mandate, maxCents);
   try {
-    return await aiRun(goal, mandate, maxCents, id);
+    return await aiRun(goal, mandate, maxCents, m);
   } catch (err) {
     console.warn("AI path failed, using deterministic planner:", (err as Error).message);
     return fallback(goal, mandate, maxCents);
   }
 }
 
-async function aiRun(goal: string, mandate: Mandate, maxCents: number, id: string): Promise<AgentResult> {
+async function aiRun(goal: string, mandate: Mandate, maxCents: number, m: LanguageModel): Promise<AgentResult> {
   let considered: Product[] = [];
   let recommendation: { product: Product; reason: string } | null = null;
 
@@ -110,7 +120,7 @@ async function aiRun(goal: string, mandate: Mandate, maxCents: number, id: strin
     `. Search the catalog, then call recommend() exactly once with the single best product within budget. Never exceed the per-item cap.`;
 
   await generateText({
-    model: id,
+    model: m,
     system,
     prompt: `Goal: ${goal}`,
     tools: { search, recommend },
