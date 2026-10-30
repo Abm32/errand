@@ -73,15 +73,15 @@ export default function Home() {
 
   const onCap = (k: keyof Mandate, v: string) => pushCaps({ [k]: Math.round(parseFloat(v || "0") * 100) } as Partial<Mandate>);
 
-  async function run() {
+  async function run(g: string = goal) {
     if (!mandateId) return;
     setBusy(true); setReply(""); setPick(null); setDecision(null); setConsidered([]); setProposalId(null);
     try {
       let id: string | null = mandateId;
-      let res = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ goal, mandateId: id }) });
+      let res = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ goal: g, mandateId: id }) });
       if (res.status === 404) { // server lost the mandate — recreate and retry once
         id = await recreate();
-        if (id) res = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ goal, mandateId: id }) });
+        if (id) res = await fetch("/api/agent", { method: "POST", body: JSON.stringify({ goal: g, mandateId: id }) });
       }
       const d = await res.json();
       setReply(d.reply ?? d.error ?? "");
@@ -105,6 +105,15 @@ export default function Home() {
       setReply(d.error ?? `Purchased ${pick?.title}. PayPal order ${d.order?.id}${d.order?.mock ? " (sandbox mock)" : ""}.`);
       setDecision(null); setPick(null); setProposalId(null);
     } finally { setBusy(false); }
+  }
+
+  function preset(g: string) { setGoal(g); run(g); }
+
+  async function reset() {
+    setReply(""); setPick(null); setDecision(null); setConsidered([]); setProposalId(null); setLedger([]);
+    const r = await fetch("/api/mandate", { method: "POST", body: JSON.stringify(DEFAULT) });
+    const d = await r.json();
+    if (d.mandateId) { setMandateId(d.mandateId); setMandate(d.mandate); }
   }
 
   const remaining = Math.max(0, mandate.budgetCents - mandate.spentCents);
@@ -133,10 +142,26 @@ export default function Home() {
         <div className="grid gap-6 md:grid-cols-[1fr_340px]">
           <section className="space-y-5">
             <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+              <div className="mb-3 flex flex-wrap gap-2">
+                {([
+                  ["🎁 Auto-approved buy", "A cheap seed pack for the garden under $18"],
+                  ["✋ Needs approval", "A nice planter for the garden around $40"],
+                  ["⛔ Blocked by mandate", "A smart LED desk lamp"],
+                ] as const).map(([label, g]) => (
+                  <button key={label} onClick={() => preset(g)} disabled={busy || !mandateId}
+                    className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-xs text-slate-300 hover:border-[#0070E0] disabled:opacity-50">
+                    {label}
+                  </button>
+                ))}
+                <button onClick={reset} disabled={busy}
+                  className="ml-auto rounded-full border border-slate-800 px-3 py-1 text-xs text-slate-500 hover:text-slate-300 disabled:opacity-50">
+                  ↺ Reset demo
+                </button>
+              </div>
               <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-400">Send your agent on an errand</label>
               <textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={2}
                 className="w-full resize-none rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm outline-none focus:border-[#0070E0]" />
-              <button onClick={run} disabled={busy || !mandateId}
+              <button onClick={() => run()} disabled={busy || !mandateId}
                 className="mt-3 w-full rounded-lg bg-[#0070E0] py-2.5 text-sm font-semibold hover:bg-[#0059b3] disabled:opacity-50">
                 {busy ? "Working…" : "Run errand"}
               </button>

@@ -35,13 +35,38 @@ action is written to a transparent audit ledger.
 ## Architecture
 
 ```
-app/page.tsx            Chat UI: goal input, mandate card, approval, activity ledger
-app/api/agent/route.ts  POST = run errand · PUT = approve a pending purchase
-lib/agent.ts            AI SDK tool-calling agent (deterministic fallback, no key needed)
-lib/mandate.ts          ★ The trust layer: screens every purchase before money moves
-lib/ledger.ts           Transparent audit log of every agent action
-lib/adapters/paypal.ts  PayPal Orders v2 (sandbox) — mock order when no keys
-lib/adapters/channel3.ts Channel3 product search — mock catalog when no key
+            goal (plain English)
+                   │
+           ┌───────▼────────┐   searches    ┌──────────────┐
+           │  Errand agent  │──────────────▶│   Channel3   │
+           │ (AI SDK tools) │◀──────────────│  (products)  │
+           └───────┬────────┘   products    └──────────────┘
+                   │ recommends one product
+           ┌───────▼────────┐   screen()    reads server-held
+           │ MANDATE engine │◀───────────── budget · spent · caps
+           │  (the gate)    │               categories · merchants · expiry
+           └───────┬────────┘
+       deny ◀──────┼──────▶ needs_approval ──▶ one-tap human approval
+                   │ auto_approve / approved
+           ┌───────▼────────┐  create+capture  ┌──────────────┐
+           │ PayPal Orders  │─────────────────▶│   PayPal     │
+           │   v2 adapter   │   settles money  │  (sandbox)   │
+           └───────┬────────┘                  └──────────────┘
+                   │ on settle → addSpent (server) + ledger entry
+                   ▼
+          activity ledger (order + capture IDs)
+```
+
+```
+app/page.tsx             UI: presets, goal input, mandate card, approval, ledger
+app/api/mandate/route.ts POST = create/update a server-held mandate (never accepts spent)
+app/api/agent/route.ts   POST = run errand (mandateId) · PUT = approve (proposalId)
+lib/agent.ts             AI SDK tool-calling agent (search + recommend); deterministic fallback
+lib/mandate.ts           ★ The trust layer: screens every purchase before money moves (tested)
+lib/store.ts             ★ Server-authoritative mandates, running spend, pending proposals (tested)
+lib/ledger.ts            Transparent audit log of every agent action
+lib/adapters/paypal.ts   PayPal Orders v2 create + capture (sandbox) — mock when no keys
+lib/adapters/channel3.ts Channel3 product search — multi-category mock when no key
 ```
 
 **Design principle:** the Mandate engine is the *single gate* in front of every
