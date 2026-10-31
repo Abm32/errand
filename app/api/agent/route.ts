@@ -4,9 +4,8 @@ import { createOrder, captureOrder } from "@/lib/adapters/paypal";
 import { record } from "@/lib/ledger";
 import { screen } from "@/lib/mandate";
 import { getMandate, addSpent, savePending, getPending, dropPending, setPendingOrder } from "@/lib/store";
+import { returnUrl } from "@/lib/return-url";
 import type { Product } from "@/lib/adapters/channel3";
-
-const returnUrl = (req: NextRequest) => new URL("/", req.url).toString();
 
 // Finalize a settled capture: bump the server-side spend and log it.
 function finalize(mandateId: string, pid: string, p: Product, orderId: string, captureId: string | undefined, approvedByHuman: boolean, mock: boolean, handsFree = false) {

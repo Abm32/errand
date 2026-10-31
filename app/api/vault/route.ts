@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSetupToken, createPaymentToken } from "@/lib/adapters/paypal";
 import { getMandate, attachVault } from "@/lib/store";
-
-const returnUrl = (req: NextRequest) => new URL("/", req.url).toString();
+import { returnUrl } from "@/lib/return-url";
 
 // Step 1: start wallet linking — buyer approves the setup token once.
 export async function POST(req: NextRequest) {
