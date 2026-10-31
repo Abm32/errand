@@ -46,23 +46,39 @@ export async function searchProducts(query: string, maxPriceCents?: number): Pro
     return matches.filter((p) => maxPriceCents === undefined || p.priceCents <= maxPriceCents);
   }
 
-  // Real Channel3 search. Endpoint shape per Channel3 docs; adjust field names
-  // to the live schema when wiring the key.
-  const res = await fetch("https://api.channel3.com/v1/search", {
+  // Real Channel3 search — https://api.trychannel3.com/v1 (x-api-key header).
+  // Real products: title, price + currency, merchant brand, buyable offer URL,
+  // and product imagery. Only buyable items (with an offer) are returned.
+  type C3Offer = { url?: string; domain?: string; price?: { price?: number; currency?: string }; availability?: string };
+  type C3Product = {
+    id?: string; title?: string;
+    brands?: { name?: string }[];
+    images?: { url?: string; cleaned_url?: string; is_main_image?: boolean }[];
+    category?: { slug?: string };
+    offers?: C3Offer[];
+  };
+  const res = await fetch("https://api.trychannel3.com/v1/search", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    headers: { "Content-Type": "application/json", "x-api-key": key },
     body: JSON.stringify({ query, limit: 8 }),
   });
-  if (!res.ok) throw new Error(`Channel3 search failed: ${res.status}`);
-  const data = await res.json();
-  const items: Product[] = (data.products ?? data.results ?? []).map((p: Record<string, unknown>, i: number) => ({
-    id: String(p.id ?? i),
-    title: String(p.title ?? p.name ?? "Untitled"),
-    priceCents: Math.round(Number(p.price ?? 0) * 100),
-    category: String(p.category ?? "general"),
-    merchant: String(p.merchant ?? p.brand ?? "unknown"),
-    url: String(p.url ?? p.link ?? "#"),
-    image: p.image ? String(p.image) : undefined,
-  }));
+  if (!res.ok) throw new Error(`Channel3 search failed: ${res.status} ${await res.text()}`);
+  const data = (await res.json()) as { products?: C3Product[] };
+  const items: Product[] = (data.products ?? [])
+    .map((p, i): Product | null => {
+      const offer = p.offers?.find((o) => o.price?.price != null) ?? p.offers?.[0];
+      if (!offer?.price?.price) return null; // skip non-buyable items
+      const img = p.images?.find((im) => im.is_main_image) ?? p.images?.[0];
+      return {
+        id: String(p.id ?? i),
+        title: String(p.title ?? "Untitled"),
+        priceCents: Math.round(Number(offer.price.price) * 100),
+        category: String(p.category?.slug ?? "general"),
+        merchant: String(p.brands?.[0]?.name ?? offer.domain ?? "unknown"),
+        url: String(offer.url ?? "#"),
+        image: img?.cleaned_url ?? img?.url,
+      };
+    })
+    .filter((p): p is Product => p !== null);
   return maxPriceCents === undefined ? items : items.filter((p) => p.priceCents <= maxPriceCents);
 }

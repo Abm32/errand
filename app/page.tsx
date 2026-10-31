@@ -12,8 +12,12 @@
 */
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence, MotionConfig, useReducedMotion } from "framer-motion";
 import { ShieldCheck, Sparkles, Wallet, Receipt, ScanSearch } from "lucide-react";
+
+// AG Grid is client-only; load it without SSR to avoid hydration mismatch.
+const LedgerGrid = dynamic(() => import("./LedgerGrid"), { ssr: false });
 
 type Product = { id: string; title: string; priceCents: number; category: string; merchant: string; url: string };
 type Decision = { verdict: "auto_approve" | "needs_approval" | "deny"; reason: string };
@@ -380,23 +384,8 @@ export default function Home() {
               </AnimatePresence>
 
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
-                <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400"><Receipt size={13} strokeWidth={2.2} /> Activity ledger</p>
-                {ledger.length === 0 ? (
-                  <p className="text-xs text-slate-500">No activity yet. Run an errand to watch the agent work.</p>
-                ) : (
-                  <ol className="space-y-2">
-                    <AnimatePresence initial={false}>
-                      {ledger.map((e) => (
-                        <motion.li key={e.id} layout initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={SPRING.snappy}
-                          className={`border-l-2 pl-3 text-xs ${e.kind === "purchased" ? "border-emerald-500" : e.kind === "denied" ? "border-rose-500" : "border-white/[0.08]"}`}>
-                          <p className="text-slate-200">{e.summary}</p>
-                          {e.detail && <p className="text-slate-500">{e.detail}</p>}
-                          {e.orderId && <p className="font-mono text-[#8fb6ff]">order {e.orderId}{e.captureId ? ` · capture ${e.captureId}` : ""}</p>}
-                        </motion.li>
-                      ))}
-                    </AnimatePresence>
-                  </ol>
-                )}
+                <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400"><Receipt size={13} strokeWidth={2.2} /> Activity ledger <span className="ml-auto normal-case tracking-normal text-slate-500">sortable · filterable</span></p>
+                <LedgerGrid rows={ledger} />
               </div>
             </section>
 
