@@ -1,6 +1,7 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Audio,
   Img,
   Sequence,
   interpolate,
@@ -306,6 +307,7 @@ const center: React.CSSProperties = {
 export const GoferVideo: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: INK }}>
+      <Audio src={staticFile("audio/master.mp3")} />
       <Aurora />
 
       {/* S1 — TITLE */}
