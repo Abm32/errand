@@ -72,9 +72,16 @@ export default function Home() {
   useEffect(() => {
     if (created.current) return;
     created.current = true;
-    fetch("/api/mandate", { method: "POST", body: JSON.stringify(DEFAULT) })
+    // Prefer the durable demo mandate (survives cold starts, keeps its linked
+    // wallet); fall back to minting a fresh one when none is seeded.
+    fetch("/api/mandate")
       .then((r) => r.json())
-      .then((d) => { setMandateId(d.mandateId); setMandate(d.mandate); })
+      .then((d) => {
+        if (d?.mandate) { setMandateId(d.mandateId); setMandate(d.mandate); return; }
+        return fetch("/api/mandate", { method: "POST", body: JSON.stringify(DEFAULT) })
+          .then((r) => r.json())
+          .then((d) => { setMandateId(d.mandateId); setMandate(d.mandate); });
+      })
       .catch(() => {});
   }, []);
 

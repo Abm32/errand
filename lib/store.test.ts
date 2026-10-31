@@ -48,4 +48,14 @@ const snap = JSON.parse(fs.readFileSync(f!, "utf8"));
 const saved = new Map<string, { spentCents: number }>(snap.mandates);
 assert.equal(saved.get(mandateId)?.spentCents, 2500, "persisted file carries the real spend");
 
+// Durable demo seed: when DEMO_MANDATE is set, a fixed-id mandate is hydrated
+// from env on load (survives cold starts on ephemeral-disk hosts).
+import { DEMO_MANDATE_ID } from "./store";
+if (process.env.DEMO_MANDATE) {
+  const demo = getMandate(DEMO_MANDATE_ID);
+  assert.ok(demo, "DEMO_MANDATE env seeds a mandate under the fixed id");
+  assert.equal(demo!.spentCents, 0, "seeded demo mandate starts at 0 spent");
+  console.log("✓ store: DEMO_MANDATE env seed check passed");
+}
+
 console.log("✓ store: mandate/spend/proposal integrity + persistence checks passed");

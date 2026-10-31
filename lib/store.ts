@@ -26,6 +26,29 @@ let seq = 0;
 
 const file = () => process.env.STORE_FILE ?? path.join(process.cwd(), ".data", "store.json");
 
+/** Fixed id for the demo mandate so a linked wallet + its URL stay stable
+ *  across cold starts. The client can open ?mandate=md_demo and always find it. */
+export const DEMO_MANDATE_ID = "md_demo";
+
+/**
+ * On hosts with an ephemeral disk (Render free tier wipes it on every
+ * restart/deploy), store.json vanishes and a linked vault is lost mid-judging.
+ * Env vars DO survive cold starts, so they are the durable seed: set
+ * DEMO_MANDATE to the mandate JSON (incl. vaultId) and it is re-created under
+ * DEMO_MANDATE_ID on every boot. spentCents resets to 0 — fine (and tidy) for a
+ * demo. ponytail: env-seed, not a DB; use Postgres when spend must truly persist.
+ */
+function seedFromEnv() {
+  const raw = process.env.DEMO_MANDATE;
+  if (!raw || mandates.has(DEMO_MANDATE_ID)) return;
+  try {
+    const m = JSON.parse(raw) as Omit<Mandate, "spentCents">;
+    mandates.set(DEMO_MANDATE_ID, { ...m, spentCents: 0 });
+  } catch (e) {
+    console.warn("DEMO_MANDATE seed skipped:", (e as Error).message);
+  }
+}
+
 let loaded = false;
 function load() {
   if (loaded) return;
@@ -38,6 +61,7 @@ function load() {
   } catch {
     /* no file yet, or unreadable — start empty */
   }
+  seedFromEnv();
 }
 
 function persist() {
