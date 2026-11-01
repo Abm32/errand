@@ -3,37 +3,107 @@
 **An autonomous shopping agent that spends your money — only within a mandate you grant.**
 
 Submission for the [PayPal AI Hackathon 2026](https://paypalaihackathon.devpost.com/).
-Targets the **Best Use of Agentic Commerce** and **Best Use of PayPal + AI** categories.
+Targets **Best Use of Agentic Commerce** and **Best Use of PayPal + AI**.
 
-**▶ Live demo: https://errand-xl2n.onrender.com**
-_(Free Render instance — the very first request after idle can take ~50s to wake, then it's instant.)_
+**▶ Live demo: https://errand-xl2n.onrender.com** _(Render Standard, always-on — no cold-start wait.)_
 
 ---
 
 ## The one-liner
 
-Everyone is building AI agents that can spend money. Nobody is answering the
-scary question: *how do you let an agent spend money safely?*
+Everyone is building AI agents that can spend money. Few are answering the scary
+question: *how do you let an agent spend money safely, and unattended?*
 
-Gofer is an AI shopping agent with a **Mandate** trust layer. You give it a
-goal in plain English and a mandate — a budget, a per-item cap, an auto-approve
-limit, and allowed categories. The agent researches real products, picks the
-best one, and **every proposed purchase passes through the Mandate engine before
-a single PayPal call is made**. Small buys clear automatically; bigger ones wait
-for one-tap approval; anything outside the rules is denied, with a reason. Every
-action is written to a transparent audit ledger.
+Gofer is an AI shopping agent with a **server-enforced Mandate**. You give it a
+goal in plain English plus a mandate — a budget, a per-item cap, an auto-approve
+limit, allowed categories, blocked merchants, and an expiry. The agent researches
+real products, picks the best one, and **every proposed purchase passes through
+the Mandate engine before a single PayPal call is made**. Small buys clear
+automatically; bigger ones wait for one-tap approval; anything outside the rules
+is denied with a reason. Every action is written to a transparent audit ledger.
+
+On top of that, Gofer runs **standing errands** that fire *autonomously* on a
+server-side schedule and settle **hands-free** against a vaulted PayPal wallet —
+no human in the loop — and stop the moment the Mandate says stop.
 
 > Agentic commerce needs an agentic wallet. The Mandate is that wallet.
 
-## Why it wins (rubric fit)
+## The Mandate trust model (why this is the point)
 
-| Criterion | How Gofer scores |
-|---|---|
-| **Technological implementation** | Real AI SDK tool-calling agent + real PayPal Orders v2 (sandbox) + Channel3 product data. |
-| **Design** | A complete, usable product, not a demo script. Mandate card, live budget meter, approval flow, audit ledger. |
-| **Potential impact** | The safety primitive the entire agentic-commerce wave is missing. Reusable across any spending agent. |
-| **Innovation** | Not another shopping bot — the *guardrail layer* is the product. Maps to PayPal's AP2 "mandate" vocabulary. |
-| **Presentation** | Clean <3-min demo: goal in → agent shops → mandate gates the spend → PayPal checkout → ledger. |
+The limits — and the amount already spent — live on the **server**
+(`lib/mandate.ts` + `lib/store.ts`), never in the browser. The client holds only
+a `mandateId` and sends a goal. It **cannot** lift its own caps, fake a lower
+spend, or submit a cheaper price, because every decision is made server-side
+against the stored mandate.
+
+`screen(mandate, purchase)` is a pure, dependency-free function and the **single
+gate** in front of every charge. Checks run deny-first:
+
+1. invalid amount → **deny**
+2. mandate expired → **deny**
+3. merchant blocked → **deny**
+4. category not in allowlist → **deny**
+5. over per-item cap → **deny**
+6. over remaining budget → **deny**
+7. at/under auto-approve limit → **auto_approve**
+8. otherwise → **needs_approval** (one-tap human approval)
+
+The spending path calls the PayPal REST API directly (not the Agent Toolkit) so
+nothing can route around `screen()`. The Agent Toolkit is the right tool for the
+*non-spending* surface (invoices, payouts, disputes) — a natural roadmap item.
+
+## How autonomous settlement works
+
+1. A buyer links a PayPal wallet **once** via Vault v3 (setup token → payment
+   token / `vault_id`), stored on the mandate.
+2. For an auto-approved buy, Gofer creates a **vaulted Orders v2 order**
+   (`payment_source.paypal.vault_id`, merchant-initiated). A vaulted order
+   settles **`COMPLETED` on create** — money moves with **no buyer present**.
+3. The server bumps the mandate's `spentCents` and writes an order + capture ID
+   to the ledger.
+
+Standing errands (`lib/scheduler.ts`, booted by `instrumentation.ts`) run the
+**same** agent → Mandate → PayPal path a manual run uses, on a cadence, with no
+human tap. When the budget runs out, the Mandate **denies** the next run
+autonomously — the guardrail, live.
+
+## Verify the autonomy claim in ~30 seconds
+
+```bash
+curl https://errand-xl2n.onrender.com/api/ledger
+```
+
+Watch for `"(scheduled)"` purchase entries carrying real PayPal `orderId` /
+`captureId`s, with the mandate's `spentCents` growing — all produced with **zero
+user interaction**. Reload a few times (the UI polls this same endpoint) and you
+will see new autonomous runs appear, spend climb, then the deplete → deny →
+refill cycle repeat.
+
+## AI model
+
+The agent runs an **AI SDK tool-calling loop** (`search` the catalog →
+`recommend` one product). Provider is resolved in `lib/agent.ts`, in order:
+
+1. **Baseten (Meta Muse)** — if `BASETEN_API_KEY` is set. **This is what the live
+   deploy uses** (`meta-models/muse-spark-open-1026`). Baseten hosts the open
+   Muse model from its own infra, so it works from any region (`api.meta.ai`
+   gates its catalog by region/IP, which breaks on cloud hosts like Render).
+2. **Meta API direct** — if `META_API_KEY` is set (good for local dev from an
+   entitled region), `muse-spark-1.3` at `api.meta.ai`.
+3. **Vercel AI Gateway** — if `AI_GATEWAY_API_KEY`/`ANTHROPIC_API_KEY` is set,
+   routing `AI_MODEL` (default `anthropic/claude-sonnet-4.5`). This is only the
+   **fallback**; `render.yaml`'s `AI_MODEL` value is the Gateway fallback id, not
+   the live model.
+4. **Deterministic planner** — if no key is available, so the full flow still
+   runs for local demos and CI.
+
+Either way, the pick always goes through the Mandate engine before money moves.
+
+## Catalog
+
+Real products via **Channel3** (`CHANNEL3_API_KEY`, set in the deploy):
+`POST api.trychannel3.com/v1/search` → buyable items with title, price, merchant,
+offer URL, image. A small deterministic mock catalog is the keyless fallback.
 
 ## Architecture
 
@@ -41,7 +111,7 @@ action is written to a transparent audit ledger.
             goal (plain English)
                    │
            ┌───────▼────────┐   searches    ┌──────────────┐
-           │  Gofer agent  │──────────────▶│   Channel3   │
+           │  Gofer agent   │──────────────▶│   Channel3   │
            │ (AI SDK tools) │◀──────────────│  (products)  │
            └───────┬────────┘   products    └──────────────┘
                    │ recommends one product
@@ -51,44 +121,97 @@ action is written to a transparent audit ledger.
            └───────┬────────┘
        deny ◀──────┼──────▶ needs_approval ──▶ one-tap human approval
                    │ auto_approve / approved
-           ┌───────▼────────┐  create+capture  ┌──────────────┐
+           ┌───────▼────────┐  vaulted order   ┌──────────────┐
            │ PayPal Orders  │─────────────────▶│   PayPal     │
-           │   v2 adapter   │   settles money  │  (sandbox)   │
-           └───────┬────────┘                  └──────────────┘
+           │ v2 + Vault v3  │  COMPLETED on    │  (sandbox)   │
+           └───────┬────────┘  create, no tap  └──────────────┘
                    │ on settle → addSpent (server) + ledger entry
                    ▼
-          activity ledger (order + capture IDs)
+          activity ledger (order + capture IDs)   ⇠ polled by UI + scheduler
 ```
 
 ```
-app/page.tsx             UI: presets, goal input, mandate card, approval, ledger
-app/api/mandate/route.ts POST = create/update a server-held mandate (never accepts spent)
-app/api/agent/route.ts   POST = run errand (mandateId) · PUT = approve (proposalId)
-lib/agent.ts             AI SDK tool-calling agent on Meta Muse (search + recommend); deterministic fallback
-lib/mandate.ts           ★ The trust layer: screens every purchase before money moves (tested)
-lib/store.ts             ★ Server-authoritative mandates, running spend, pending proposals (tested)
-lib/ledger.ts            Transparent audit log of every agent action
-lib/adapters/paypal.ts   PayPal Orders v2 create + capture (sandbox) — mock when no keys
-lib/adapters/channel3.ts Channel3 product search — multi-category mock when no key
+app/page.tsx              UI: presets, goal input, mandate card, approval, ledger
+app/LedgerGrid.tsx        AG Grid audit ledger
+app/StandingGantt.tsx     Bryntum Gantt of standing errands
+app/api/mandate/route.ts  POST = create/update a server-held mandate (never accepts spent)
+app/api/agent/route.ts    POST = run errand (mandateId) · PUT = approve · PATCH = capture
+app/api/vault/route.ts    POST/PUT = link a PayPal wallet (setup → payment token)
+app/api/ledger/route.ts   GET = ledger + live mandate spend (polled by the UI)
+instrumentation.ts        boots the autonomous scheduler on server start
+lib/mandate.ts            ★ trust layer: screens every purchase before money moves (tested)
+lib/store.ts              ★ server-authoritative mandates, running spend, proposals (tested)
+lib/scheduler.ts          fires standing errands autonomously, settles hands-free
+lib/settle.ts             shared hands-free settle (create vaulted order → capture → record)
+lib/agent.ts              AI SDK tool-calling agent (Muse via Baseten); deterministic fallback
+lib/adapters/paypal.ts    PayPal Orders v2 + Vault v3 — mock when no keys
+lib/adapters/channel3.ts  Channel3 product search — mock when no key
+lib/ledger.ts             transparent audit log of every agent action
+lib/standing.ts           standing-errand definitions + Bryntum Gantt task projection
 ```
 
-**Design principle:** the Mandate engine is the *single gate* in front of every
-charge. The spending path uses the PayPal REST API directly so nothing can route
-around `screen()`. The PayPal Agent Toolkit is the right tool for the
-non-spending surface (invoices, payouts, disputes) — a natural roadmap item.
+## Stack / sponsor tools
 
-## Run it (zero config)
+- **PayPal** — Orders v2 (create + capture) and Vault v3 (setup + payment tokens)
+  for hands-free, merchant-initiated settlement.
+- **Channel3** — real product catalog search.
+- **Render** — single long-lived web service (Standard, always-on).
+- **Next.js 16** (App Router, React 19), **Tailwind v4**, **webpack** build.
+- **AG Grid** — audit ledger. **Bryntum Gantt** — standing-errand schedule.
+- **AI SDK** (`ai`) tool-calling loop on **Meta Muse via Baseten**.
+- **MIT** licensed.
+
+## Run it locally (zero config)
 
 ```bash
 npm install
 npm run dev     # http://localhost:3000 — works with NO keys (mock catalog + mock PayPal)
-npm test        # mandate engine self-check
+npm test        # mandate engine + store + standing-errand self-checks
+npm run build   # webpack build (Turbopack OOMs on the Bryntum bundle)
 ```
 
-To go live, copy `.env.example` → `.env.local` and add PayPal sandbox keys
-(+ optionally Channel3 and an AI key). See `.env.example`.
+To go live, copy `.env.example` → `.env.local` and add keys. The scheduler is
+off locally by default; set `ENABLE_SCHEDULER=true` (or `DEMO_MANDATE`) to let
+standing errands fire in dev.
 
-## Proof: a real PayPal transaction
+### Environment variables
+
+| Var | Purpose |
+|---|---|
+| `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` | PayPal REST creds. Unset → mock orders. |
+| `PAYPAL_ENV` | `sandbox` (default) or `live`. |
+| `PAYPAL_CURRENCY` | `USD` (PayPal does not support INR as a txn currency). |
+| `CHANNEL3_API_KEY` | Real catalog. Unset → mock catalog. |
+| `BASETEN_API_KEY` | Meta Muse via Baseten (the live model path). |
+| `META_API_KEY` | Meta API direct (local, entitled regions). |
+| `AI_GATEWAY_API_KEY` / `ANTHROPIC_API_KEY` + `AI_MODEL` | Vercel AI Gateway fallback. |
+| `DEMO_MANDATE` | JSON seed for a fixed `md_demo` mandate; re-created on every boot. |
+| `ENABLE_SCHEDULER` | `true` to run autonomous errands (auto-on when `DEMO_MANDATE` is set). |
+| `PUBLIC_URL` | Force a public origin for PayPal return URLs (optional). |
+
+## Honest scope: sandbox + what's demo-grade
+
+- **PayPal is sandbox by design.** This is a deliberate safety choice for a public
+  hackathon demo that spends money unattended, not a limitation. Going live is a
+  **one-flag change**: `PAYPAL_ENV=live` + live credentials. The settlement code
+  is identical.
+- **File-backed store on a persistent disk.** Mandates, spend, and the ledger are
+  JSON files (`lib/store.ts`, `lib/ledger.ts`) on a mounted **Render persistent
+  disk** (`/var/data`), so the server-authoritative spend and the audit ledger
+  **survive restarts and redeploys** — the "can't overspend" guarantee holds
+  across reboots, not just within one process. Single instance keeps that one
+  file authoritative; for multi-instance scale, back it with Postgres.
+- **The demo mandate is a daily allowance.** Spend is durable and the cap
+  genuinely binds until the allowance resets once every **24 h** — a real
+  spend-limit primitive. Within a day the budget truly holds: once spent, the
+  agent's own scheduled runs are **denied by the Mandate** (the guardrail, live)
+  until the next daily reset. Standing errands re-fire on a short demo cadence
+  (~2.5 min) so there's always fresh activity to watch.
+- **Standing-errand Gantt is a projection.** The Bryntum Gantt projects the
+  cadence deterministically for display; the autonomous firing is the real
+  scheduler in `lib/scheduler.ts`.
+
+## Proof: a real PayPal settlement
 
 Gofer settles real money in the PayPal **sandbox**, verified end-to-end:
 
@@ -100,11 +223,8 @@ Gofer settles real money in the PayPal **sandbox**, verified end-to-end:
 | Flow | agent recommended → Mandate gated (needs approval) → human approved in PayPal → captured |
 
 Full verified capture response: [`docs/settlement-proof.json`](docs/settlement-proof.json)
-(fetched straight from PayPal's Orders v2 API). PayPal doesn't support INR, so the
-sandbox buyer is US-based and `PAYPAL_CURRENCY=USD`.
+(straight from PayPal's Orders v2 API). For the *hands-free* path, the live
+`/api/ledger` is the proof — `"(scheduled)"` purchases with real order/capture
+IDs settle with no human tap.
 
-## Status
-
-Working prototype with a **real, verified sandbox settlement**. Also runs fully
-offline (mock catalog + mock PayPal) with zero keys. See `HACKATHON.md` for the
-full strategy, research, and remaining checklist.
+See [`docs/SUBMISSION.md`](docs/SUBMISSION.md) for the full hackathon write-up.

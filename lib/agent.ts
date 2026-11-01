@@ -63,12 +63,12 @@ function decide(mandate: Mandate, p: Product): Decision {
 }
 
 // Deterministic planner used when no AI key is set, or the AI path errors.
-// Policy: it's a gift/shopping agent, so spend the budget well — pick the
-// nicest qualifying item within the price ceiling (highest-priced that fits),
-// then let the Mandate engine gate it.
+// Policy: this is a money-SAFETY agent, so it satisfices — pick the CHEAPEST
+// item that satisfies the goal within the price ceiling, never the priciest.
+// A spending agent must be biased to spend less, then let the Mandate gate it.
 async function fallback(goal: string, mandate: Mandate, maxCents: number): Promise<AgentResult> {
   const found = await searchProducts(goal, maxCents);
-  const pick = [...found].sort((a, b) => b.priceCents - a.priceCents)[0];
+  const pick = [...found].sort((a, b) => a.priceCents - b.priceCents)[0];
   if (!pick) {
     return { reply: "I couldn't find anything within your mandate's budget.", considered: found };
   }
@@ -131,7 +131,7 @@ async function aiRun(goal: string, mandate: Mandate, maxCents: number, m: Langua
     `Mandate: budget $${(mandate.budgetCents / 100).toFixed(2)}, per-item cap $${(mandate.perItemCapCents / 100).toFixed(2)}, ` +
     `auto-approve under $${(mandate.autoApproveUnderCents / 100).toFixed(2)}` +
     (mandate.allowedCategories?.length ? `, allowed categories: ${mandate.allowedCategories.join(", ")}` : "") +
-    `. Search the catalog, then call recommend() exactly once with the single best product within budget. Never exceed the per-item cap.`;
+    `. Search the catalog, then call recommend() exactly once. You are a money-SAFETY agent: among items that genuinely satisfy the goal, prefer the CHEAPEST — spend as little as needed, never the most. Never exceed the per-item cap.`;
 
   await generateText({
     model: m,
@@ -144,7 +144,7 @@ async function aiRun(goal: string, mandate: Mandate, maxCents: number, m: Langua
   // If the model didn't commit to a pick, fall back to the deterministic choice.
   if (!recommendation) {
     if (considered.length === 0) considered = await searchProducts(goal, maxCents);
-    const pick = [...considered].sort((a, b) => b.priceCents - a.priceCents)[0];
+    const pick = [...considered].sort((a, b) => a.priceCents - b.priceCents)[0]; // satisfice: cheapest that fits
     if (!pick) return { reply: "I couldn't find anything within your mandate's budget.", considered };
     const decision = decide(mandate, pick);
     return { reply: `I found "${pick.title}" for $${(pick.priceCents / 100).toFixed(2)}. ${decision.reason}`, considered, pick, decision };

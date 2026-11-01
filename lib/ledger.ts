@@ -12,7 +12,7 @@ import path from "node:path";
 export type LedgerEntry = {
   id: string;
   at: number;
-  kind: "search" | "recommend" | "awaiting_approval" | "denied" | "ordered" | "purchased";
+  kind: "search" | "recommend" | "awaiting_approval" | "denied" | "ordered" | "purchased" | "verified";
   summary: string;
   detail?: string;
   amountCents?: number;

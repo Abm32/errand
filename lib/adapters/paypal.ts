@@ -95,6 +95,52 @@ export async function createOrder(
   return { id: data.id, status: data.status, approveUrl: approve?.href, captureId, mock: false };
 }
 
+/**
+ * Verify a webhook event really came from PayPal (not a forged POST) via
+ * /v1/notifications/verify-webhook-signature. Returns true only on
+ * verification_status SUCCESS. Returns false (never throws) when creds/
+ * PAYPAL_WEBHOOK_ID are missing or PayPal rejects it — the route decides
+ * what to do with an unverified event.
+ *
+ * `event` is the parsed webhook body; PayPal's verify API recomputes the
+ * signature server-side (this mirrors what PayPal's own SDKs pass).
+ */
+export async function verifyWebhookSignature(
+  headers: {
+    authAlgo: string | null;
+    certUrl: string | null;
+    transmissionId: string | null;
+    transmissionSig: string | null;
+    transmissionTime: string | null;
+  },
+  event: unknown,
+): Promise<boolean> {
+  const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+  const configured = process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET;
+  if (!webhookId || !configured) return false;
+  try {
+    const token = await accessToken();
+    const res = await fetch(`${BASE}/v1/notifications/verify-webhook-signature`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        auth_algo: headers.authAlgo,
+        cert_url: headers.certUrl,
+        transmission_id: headers.transmissionId,
+        transmission_sig: headers.transmissionSig,
+        transmission_time: headers.transmissionTime,
+        webhook_id: webhookId,
+        webhook_event: event,
+      }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json().catch(() => ({}));
+    return data?.verification_status === "SUCCESS";
+  } catch {
+    return false;
+  }
+}
+
 // ---- Vault: save a PayPal wallet once, then charge it hands-free ----
 
 export type SetupToken = { id: string; approveUrl?: string; mock: boolean };
