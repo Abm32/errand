@@ -10,7 +10,9 @@ services:
   - type: web
     name: errand
     runtime: node
-    plan: free
+    # Standard (1 CPU / 2 GB) — the Bryntum Gantt bundle OOMs the 512 MB free
+    # builder during `next build`; 2 GB builds it fine. Covered by Render credits.
+    plan: standard
     numInstances: 1
     buildCommand: npm install && npm run build
     startCommand: npm start
