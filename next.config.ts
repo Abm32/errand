@@ -10,14 +10,11 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     "*": ["node_modules/@bryntum/**", "video/**"],
   },
+  // Tailwind now runs through postcss.config.mjs (@tailwindcss/postcss), which
+  // Turbopack applies automatically. The old per-file @tailwindcss/turbopack
+  // rule ran the Tailwind loader over Bryntum's enormous CSS → >8GB build OOM.
   turbopack: {
     root: __dirname,
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
-      },
-    },
   },
 };
 
