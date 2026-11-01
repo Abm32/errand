@@ -67,9 +67,10 @@ wallet — stopping the instant the Mandate says stop.
 1. Open https://errand-xl2n.onrender.com/api/ledger (or hit it with `curl`).
 2. Look for `"(scheduled)"` purchase entries carrying real PayPal `orderId` and
    `captureId`s, with the mandate's `spentCents` climbing.
-3. Reload after a minute: new autonomous runs appear, spend grows, and when the
-   budget is hit you'll see **deny** entries — then the budget refills and the
-   cycle repeats. None of this involved a user action.
+3. Reload after a minute or two: new autonomous runs appear and `spentCents`
+   grows — no user action. The budget is a **daily allowance**: once the day's
+   budget is spent the Mandate **denies** the agent's own runs until the 24 h
+   reset (so denials show once the allowance is exhausted, not every minute).
 
 The UI at the live URL polls that same endpoint, so you can also just watch the
 ledger and budget meter update live.

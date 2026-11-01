@@ -4,10 +4,12 @@
 // spending safely over time. A Bryntum Gantt renders each errand as a parent
 // task whose children are its runs — past runs show 100% done, upcoming ones 0%.
 //
-// ponytail: the schedule is *projected deterministically* from a cadence, not a
-// cron that actually fires. That's the honest demo scope — the runs you click
-// execute the real agent against the live Mandate. Wire a scheduler/queue to
-// auto-fire the future ones when this graduates past a demo.
+// The Gantt view projects the cadence deterministically for display, but the
+// runs are REAL: lib/scheduler.ts (started from instrumentation.ts) autonomously
+// fires each standing errand on a cadence through the live agent + Mandate +
+// PayPal path — and clicking a run fires it on demand too.
+// ponytail: in-process setInterval scheduler on one instance; move to a durable
+// queue / Render Cron for multi-instance or at-least-once guarantees.
 
 export type StandingErrand = {
   id: string;

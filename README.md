@@ -76,8 +76,9 @@ curl https://errand-xl2n.onrender.com/api/ledger
 Watch for `"(scheduled)"` purchase entries carrying real PayPal `orderId` /
 `captureId`s, with the mandate's `spentCents` growing — all produced with **zero
 user interaction**. Reload a few times (the UI polls this same endpoint) and you
-will see new autonomous runs appear, spend climb, then the deplete → deny →
-refill cycle repeat.
+will see new autonomous runs appear and spend climb. The budget is a **daily
+allowance**: once the day's budget is spent, the Mandate **denies** the agent's
+own scheduled runs until the 24 h reset — the guardrail, enforced live.
 
 ## AI model
 

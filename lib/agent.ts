@@ -58,6 +58,26 @@ function parseMaxCents(goal: string): number | undefined {
   return m ? Math.round(parseFloat(m[1]) * 100) : undefined;
 }
 
+// Satisfice WITH relevance: a money-safety agent should buy the cheapest thing
+// that actually matches the goal, not the globally cheapest (which can be
+// off-goal — "coffee beans" must not resolve to jojoba oil). Score each product
+// by goal-keyword overlap, keep the most-relevant tier, then take the cheapest
+// in it. Falls back to cheapest-overall only when nothing matches, to avoid
+// dead-ending a run.
+const GOAL_STOP = new Set(["the", "a", "an", "for", "my", "who", "and", "under", "around", "with", "to", "of", "find", "buy", "me", "some", "nice", "cheap", "gift", "that", "loves", "is", "good", "more", "get", "need", "want", "replace", "restock", "refill", "order"]);
+function goalTokens(goal: string): string[] {
+  return goal.toLowerCase().match(/[a-z]+/g)?.filter((t) => t.length > 2 && !GOAL_STOP.has(t)) ?? [];
+}
+function cheapestRelevant(goal: string, products: Product[]): Product | undefined {
+  if (products.length === 0) return undefined;
+  const tokens = goalTokens(goal);
+  const hay = (p: Product) => `${p.title} ${p.category} ${p.merchant}`.toLowerCase();
+  const scored = products.map((p) => ({ p, s: tokens.filter((t) => hay(p).includes(t)).length }));
+  const best = Math.max(...scored.map((x) => x.s));
+  const pool = best > 0 ? scored.filter((x) => x.s === best) : scored; // top relevance tier (or all)
+  return [...pool].sort((a, b) => a.p.priceCents - b.p.priceCents)[0]?.p; // cheapest in that tier
+}
+
 function decide(mandate: Mandate, p: Product): Decision {
   return screen(mandate, { title: p.title, amountCents: p.priceCents, category: p.category, merchant: p.merchant });
 }
@@ -68,7 +88,7 @@ function decide(mandate: Mandate, p: Product): Decision {
 // A spending agent must be biased to spend less, then let the Mandate gate it.
 async function fallback(goal: string, mandate: Mandate, maxCents: number): Promise<AgentResult> {
   const found = await searchProducts(goal, maxCents);
-  const pick = [...found].sort((a, b) => a.priceCents - b.priceCents)[0];
+  const pick = cheapestRelevant(goal, found);
   if (!pick) {
     return { reply: "I couldn't find anything within your mandate's budget.", considered: found };
   }
@@ -144,7 +164,7 @@ async function aiRun(goal: string, mandate: Mandate, maxCents: number, m: Langua
   // If the model didn't commit to a pick, fall back to the deterministic choice.
   if (!recommendation) {
     if (considered.length === 0) considered = await searchProducts(goal, maxCents);
-    const pick = [...considered].sort((a, b) => a.priceCents - b.priceCents)[0]; // satisfice: cheapest that fits
+    const pick = cheapestRelevant(goal, considered); // satisfice within the goal-relevant tier
     if (!pick) return { reply: "I couldn't find anything within your mandate's budget.", considered };
     const decision = decide(mandate, pick);
     return { reply: `I found "${pick.title}" for $${(pick.priceCents / 100).toFixed(2)}. ${decision.reason}`, considered, pick, decision };
