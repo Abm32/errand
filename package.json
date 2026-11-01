@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "tsx lib/mandate.test.ts && rm -f /tmp/errand-test-store.json && STORE_FILE=/tmp/errand-test-store.json tsx lib/store.test.ts && tsx lib/standing.test.ts"

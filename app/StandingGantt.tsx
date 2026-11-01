@@ -26,7 +26,7 @@ export default function StandingGantt({
   const { tasks, projectStart } = useMemo(() => ganttTasks(), []);
 
   const columns = useMemo(
-    () => [{ type: "name", text: "Standing errand", field: "name", width: 240 }],
+    () => [{ type: "name" as const, text: "Standing errand", field: "name", width: 240 }],
     []
   );
 
