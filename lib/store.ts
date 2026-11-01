@@ -119,6 +119,18 @@ export function addSpent(mandateId: string, cents: number): Mandate | undefined 
   return next;
 }
 
+/** Demo-only: refill the seeded demo mandate's budget by zeroing its spend, so
+ *  the autonomous scheduler's deplete→deny→refill cycle keeps showing activity. */
+export function resetDemoSpend(): Mandate | undefined {
+  load();
+  const m = mandates.get(DEMO_MANDATE_ID);
+  if (!m) return undefined;
+  const next = { ...m, spentCents: 0 };
+  mandates.set(DEMO_MANDATE_ID, next);
+  persist();
+  return next;
+}
+
 export function attachVault(mandateId: string, vaultId: string): Mandate | undefined {
   load();
   const m = mandates.get(mandateId);

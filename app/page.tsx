@@ -93,6 +93,24 @@ export default function Home() {
 
   useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
 
+  // Poll the server ledger so autonomous (scheduled) runs and the live spend
+  // appear without any user action — the agent visibly works on its own.
+  useEffect(() => {
+    let alive = true;
+    const pull = async () => {
+      try {
+        const d = await fetch("/api/ledger", { cache: "no-store" }).then((r) => r.json());
+        if (!alive) return;
+        if (Array.isArray(d.entries)) setLedger(d.entries as Entry[]);
+        // Only adopt server spend/caps for the durable demo mandate.
+        if (d.mandate && mandateId === "md_demo") setMandate(d.mandate as Mandate);
+      } catch { /* transient; try again next tick */ }
+    };
+    const h = setInterval(pull, 12000);
+    pull();
+    return () => { alive = false; clearInterval(h); };
+  }, [mandateId]);
+
   async function recreate(): Promise<string | null> {
     const r = await fetch("/api/mandate", { method: "POST", body: JSON.stringify(configOf(mandate)) });
     const d = await r.json();
