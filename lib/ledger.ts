@@ -31,7 +31,8 @@ function load() {
   if (loaded) return;
   loaded = true;
   try {
-    store = JSON.parse(fs.readFileSync(file(), "utf8"));
+    // See store.ts: skip whole-project build tracing for this runtime-only path.
+    store = JSON.parse(fs.readFileSync(/* turbopackIgnore: true */ file(), "utf8"));
   } catch {
     /* none yet */
   }

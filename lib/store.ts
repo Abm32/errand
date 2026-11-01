@@ -54,7 +54,11 @@ function load() {
   if (loaded) return;
   loaded = true;
   try {
-    const s = JSON.parse(fs.readFileSync(file(), "utf8"));
+    // turbopackIgnore stops Turbopack from tracing the *whole project* for this
+    // dynamic path — that trace blows past 8GB at build time once @bryntum is in
+    // node_modules. The path is a runtime file, not a build input, so skipping it
+    // is correct.
+    const s = JSON.parse(fs.readFileSync(/* turbopackIgnore: true */ file(), "utf8"));
     mandates = new Map(s.mandates ?? []);
     pending = new Map(s.pending ?? []);
     seq = s.seq ?? 0;
