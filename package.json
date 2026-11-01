@@ -8,11 +8,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx lib/mandate.test.ts && rm -f /tmp/errand-test-store.json && STORE_FILE=/tmp/errand-test-store.json tsx lib/store.test.ts"
+    "test": "tsx lib/mandate.test.ts && rm -f /tmp/errand-test-store.json && STORE_FILE=/tmp/errand-test-store.json tsx lib/store.test.ts && tsx lib/standing.test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.92",
     "@ai-sdk/openai-compatible": "^3.0.82",
+    "@bryntum/gantt": "npm:@bryntum/gantt-trial@7.3.8",
+    "@bryntum/gantt-react": "7.3.8",
     "ag-grid-community": "^33.3.2",
     "ag-grid-react": "^33.3.2",
     "ai": "^7.0.157",

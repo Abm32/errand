@@ -18,6 +18,8 @@ import { ShieldCheck, Sparkles, Wallet, Receipt, ScanSearch } from "lucide-react
 
 // AG Grid is client-only; load it without SSR to avoid hydration mismatch.
 const LedgerGrid = dynamic(() => import("./LedgerGrid"), { ssr: false });
+// Bryntum Gantt reads the DOM at construction — client-only too.
+const StandingGantt = dynamic(() => import("./StandingGantt"), { ssr: false });
 
 type Product = { id: string; title: string; priceCents: number; category: string; merchant: string; url: string };
 type Decision = { verdict: "auto_approve" | "needs_approval" | "deny"; reason: string };
@@ -466,6 +468,22 @@ export default function Home() {
             </motion.aside>
           </div>
 
+          {/* Standing errands — recurring, mandate-bound jobs on a Bryntum Gantt */}
+          <motion.section initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={SPRING.smooth}
+            className="mt-14 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 backdrop-blur">
+            <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
+                <Receipt size={13} strokeWidth={2.2} /> Standing errands
+              </p>
+              <span className="text-xs text-slate-500">recurring, mandate-bound — click a run to send it now</span>
+              <span className="ml-auto flex items-center gap-3 text-[11px] text-slate-500">
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-emerald-400" /> ran</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-[#4d8bff]" /> scheduled</span>
+              </span>
+            </div>
+            <StandingGantt onRun={(g) => { preset(g); window.scrollTo({ top: 0, behavior: "smooth" }); }} disabled={busy || !mandateId} />
+          </motion.section>
+
           {/* How it works */}
           <section className="mt-16">
             <p className="mb-5 text-center text-xs font-medium uppercase tracking-[0.2em] text-slate-500">How it works</p>
@@ -496,6 +514,7 @@ export default function Home() {
               <span>Meta Muse</span><span className="text-slate-700">·</span>
               <span>PayPal</span><span className="text-slate-700">·</span>
               <span>Channel3</span><span className="text-slate-700">·</span>
+              <span>Bryntum</span><span className="text-slate-700">·</span>
               <span>Next.js</span>
             </div>
           </footer>
