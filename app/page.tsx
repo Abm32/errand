@@ -213,6 +213,11 @@ export default function Home() {
 
   const remaining = Math.max(0, mandate.budgetCents - mandate.spentCents);
   const settled = reply.startsWith("Purchased");
+  // Derived from the polled ledger (no extra fetch): true when a scheduled
+  // autonomous run landed in the last ~3 min. Re-evaluated on each poll tick.
+  const liveAutonomy = ledger.some(
+    (e) => Date.now() - e.at < 180_000 && /scheduled/i.test(e.summary ?? ""),
+  );
   const pct = mandate.budgetCents > 0 ? Math.min(1, mandate.spentCents / mandate.budgetCents) : 0;
   const meterColor = pct > 0.85 ? "#f43f5e" : pct > 0.6 ? "#f59e0b" : "#3b7dff";
   const badge = (v: string) =>
@@ -234,10 +239,24 @@ export default function Home() {
             <div className="flex items-center gap-2.5">
               <AgentOrb active={thinking} reduce={!!reduce} />
               <span className="text-lg font-semibold tracking-[-0.03em] text-white">gofer</span>
-              <span className="ml-auto hidden items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-400 sm:flex">
-                <span className={`h-1.5 w-1.5 rounded-full ${mandateId ? "bg-emerald-400" : "bg-slate-600"}`} />
-                {mandateId ? "mandate enforced server-side" : "connecting…"}
-              </span>
+              <div className="ml-auto hidden items-center gap-2 sm:flex">
+                <AnimatePresence>
+                  {liveAutonomy && (
+                    <motion.span key="live" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={SPRING.snappy}
+                      className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span aria-hidden className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-safe:animate-ping" />
+                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      </span>
+                      agent running autonomously
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+                <span className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-400">
+                  <span className={`h-1.5 w-1.5 rounded-full ${mandateId ? "bg-emerald-400" : "bg-slate-600"}`} />
+                  {mandateId ? "mandate enforced server-side" : "connecting…"}
+                </span>
+              </div>
             </div>
             <div className="mt-8 max-w-2xl">
               <h1 className="text-[2.1rem] font-semibold leading-[1.1] tracking-[-0.03em] text-white sm:text-[2.6rem]">
@@ -245,7 +264,7 @@ export default function Home() {
                 <span className="bg-gradient-to-r from-[#8fb6ff] to-[#b3a7ff] bg-clip-text text-transparent">and can&apos;t overspend.</span>
               </h1>
               <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-slate-400">
-                Grant a mandate — budget, per-item cap, categories. Gofer reasons with Meta Muse, finds the buy, and settles through PayPal, strictly within your limits.
+                A server-enforced leash on an agent that spends your money. Set a budget and per-item caps once; Gofer finds the buy and settles hands-free through PayPal — never past your limits.
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                 {["Reasons on Meta Muse", "Settles via PayPal", "Shops Channel3"].map((t, i) => (
@@ -262,9 +281,9 @@ export default function Home() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.smooth, delay: 0.12 }}
             className="mb-6 grid gap-3 sm:grid-cols-3">
             {([
-              [ShieldCheck, "Server-enforced Mandate", "Budget, caps, categories — the agent can't exceed them."],
+              [ShieldCheck, "Server-enforced Mandate", "Budget, caps and categories live on the server — the agent can't exceed them."],
               [Sparkles, "Reasons with Meta Muse", "A real model picks the best buy within your limits."],
-              [Wallet, "Real PayPal settlement", "Every charge is an actual capture — hands-free when vaulted."],
+              [Wallet, "Real PayPal settlement", "Every charge is a real PayPal capture — hands-free once your wallet's linked."],
             ] as const).map(([Icon, t, d], i) => (
               <motion.div key={t} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.snappy, delay: 0.14 + i * 0.05 }}
                 className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3.5 backdrop-blur">

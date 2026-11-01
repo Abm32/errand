@@ -26,15 +26,16 @@ let store: LedgerEntry[] = [];
 
 const file = () => process.env.LEDGER_FILE ?? path.join(process.cwd(), ".data", "ledger.json");
 
-let loaded = false;
+// Re-read on every access. The scheduler writes via instrumentation.ts, which
+// Next may bundle as a SEPARATE module instance from the route handlers; the
+// file is the shared source of truth across those contexts, so a one-time cache
+// would hide the scheduler's autonomous entries from the polling route.
 function load() {
-  if (loaded) return;
-  loaded = true;
   try {
     // See store.ts: skip whole-project build tracing for this runtime-only path.
     store = JSON.parse(fs.readFileSync(/* turbopackIgnore: true */ file(), "utf8"));
   } catch {
-    /* none yet */
+    /* no file yet — keep current in-memory entries */
   }
 }
 

@@ -53,6 +53,18 @@ const KIND: Record<string, { label: string; color: string; bg: string }> = {
   denied: { label: "denied", color: "#ff8f8f", bg: "rgba(244,63,94,0.15)" },
 };
 
+// Autonomous scheduled runs reuse the indigo end of the brand gradient — distinct
+// from the verdict semantics (emerald / amber / rose), so "auto" never reads as a verdict.
+const AUTO = {
+  accent: "#6a5bff",
+  color: "#b9aeff",
+  bg: "rgba(106,91,255,0.16)",
+  border: "rgba(106,91,255,0.38)",
+};
+
+// Summary either contains "(scheduled)" or starts with "Scheduled errand".
+const isScheduled = (summary: string | undefined) => /scheduled/i.test(summary ?? "");
+
 export default function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
   const columnDefs = useMemo<ColDef<LedgerRow>[]>(
     () => [
@@ -73,21 +85,58 @@ export default function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
           return (
             <span
               style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
                 color: k.color,
                 background: k.bg,
-                padding: "3px 10px",
+                padding: "3px 10px 3px 8px",
                 borderRadius: 999,
                 fontSize: 11,
                 fontWeight: 600,
                 whiteSpace: "nowrap",
               }}
             >
+              {/* colored dot — lets purchased / denied / approval read at a glance */}
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: "currentColor", flexShrink: 0 }} />
               {k.label}
             </span>
           );
         },
       },
-      { field: "summary", headerName: "Event", flex: 1, minWidth: 220, tooltipField: "detail", wrapText: true, autoHeight: true },
+      {
+        field: "summary",
+        headerName: "Event",
+        flex: 1,
+        minWidth: 220,
+        tooltipField: "detail",
+        wrapText: true,
+        autoHeight: true,
+        cellRenderer: (p: { value: string; data?: LedgerRow }) => (
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "4px 0", lineHeight: 1.45 }}>
+            {isScheduled(p.data?.summary) && (
+              <span
+                style={{
+                  flexShrink: 0,
+                  marginTop: 1,
+                  color: AUTO.color,
+                  background: AUTO.bg,
+                  border: `1px solid ${AUTO.border}`,
+                  padding: "0 6px",
+                  borderRadius: 999,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                }}
+              >
+                auto
+              </span>
+            )}
+            <span style={{ flex: 1, minWidth: 0, whiteSpace: "normal", wordBreak: "break-word" }}>{p.value}</span>
+          </div>
+        ),
+      },
       {
         field: "amountCents",
         headerName: "Amount",
@@ -124,11 +173,19 @@ export default function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
         getRowId={(p) => p.data.id}
+        getRowStyle={(p) =>
+          isScheduled(p.data?.summary)
+            ? { boxShadow: `inset 3px 0 0 ${AUTO.accent}`, background: "rgba(106,91,255,0.05)" }
+            : undefined
+        }
         animateRows
         enableCellTextSelection
         tooltipShowDelay={300}
         overlayNoRowsTemplate={
-          '<span style="color:#64748b;font-size:12px">No activity yet. Run an errand to watch the agent work.</span>'
+          '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:28px 16px;text-align:center">' +
+          '<span style="color:#cdd5e6;font-size:13px;font-weight:600">No activity yet</span>' +
+          '<span style="color:#64748b;font-size:12px;max-width:340px">Run an errand to watch the agent work — searches, approvals, and payments stream in here live.</span>' +
+          "</div>"
         }
       />
     </div>

@@ -49,10 +49,13 @@ function seedFromEnv() {
   }
 }
 
-let loaded = false;
+// Re-read on every access so writes from a separate module context are visible.
+// The scheduler runs via instrumentation.ts, which Next may bundle as its own
+// module instance; the file is the shared source of truth, so a one-time cache
+// would make autonomous spend/mandate updates invisible to the route handlers
+// (and vice-versa). ponytail: last-writer-wins full-file rewrite; fine on one
+// instance — move to Postgres if concurrent writers ever matter.
 function load() {
-  if (loaded) return;
-  loaded = true;
   try {
     // turbopackIgnore stops Turbopack from tracing the *whole project* for this
     // dynamic path — that trace blows past 8GB at build time once @bryntum is in
