@@ -39,9 +39,11 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="relative min-h-screen text-slate-100 selection:bg-[#3b7dff]/30">
         <Aurora />
         <MobileBar />
-        <div className="mx-auto flex max-w-[1440px]">
+        <div className="flex">
           <Sidebar />
-          <main className="min-w-0 flex-1 px-4 py-8 sm:px-8">{children}</main>
+          <main className="min-w-0 flex-1 px-4 py-8 sm:px-8">
+            <div className="mx-auto max-w-5xl">{children}</div>
+          </main>
         </div>
       </div>
     </MotionConfig>
