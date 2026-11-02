@@ -43,10 +43,11 @@ export default function StandingGantt({
         readOnly
         // Zoom the timeline to fit the runs once, so bars spread across the full
         // width instead of clustering at the window start.
-        onPaint={({ source }: { source: { zoomToFit: (o?: { leftMargin?: number; rightMargin?: number }) => void } }) => {
+        onPaint={(event) => {
           if (fitted.current) return;
           fitted.current = true;
-          source.zoomToFit({ leftMargin: 24, rightMargin: 24 });
+          const g = (event as { source?: { zoomToFit?: (o?: { leftMargin?: number; rightMargin?: number }) => void } }).source;
+          g?.zoomToFit?.({ leftMargin: 24, rightMargin: 24 });
         }}
         // A task is a real trigger: hand its goal to the agent, let the Mandate decide.
         onTaskClick={({ taskRecord }: { taskRecord: { getData: (f: string) => string } }) => {
