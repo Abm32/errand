@@ -233,6 +233,7 @@ export default function Home() {
   const liveAutonomy = ledger.some(
     (e) => Date.now() - e.at < 180_000 && /scheduled/i.test(e.summary ?? ""),
   );
+  const settledCount = ledger.filter((e) => e.kind === "purchased").length;
   const pct = mandate.budgetCents > 0 ? Math.min(1, mandate.spentCents / mandate.budgetCents) : 0;
   const meterColor = pct > 0.85 ? "#f43f5e" : pct > 0.6 ? "#f59e0b" : "#3b7dff";
   const badge = (v: string) =>
@@ -272,27 +273,48 @@ export default function Home() {
         </div>
         <NavBar live={liveAutonomy} mandateId={mandateId} />
         <div id="top" className="relative mx-auto max-w-5xl px-4 py-10">
-          <motion.header initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={SPRING.stiff} className="mb-9">
+          <motion.header initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={SPRING.stiff}
+            className="mb-16 flex min-h-[66vh] flex-col justify-center py-10 sm:min-h-[72vh]">
             <div className="flex items-center gap-2.5">
               <AgentOrb active={thinking} reduce={!!reduce} />
               <span className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Agentic commerce, on a leash you hold</span>
             </div>
-            <div className="mt-8 max-w-2xl">
-              <h1 className="text-[2.1rem] font-semibold leading-[1.1] tracking-[-0.03em] text-white sm:text-[2.6rem]">
-                An agent that shops for you —{" "}
-                <span className="bg-gradient-to-r from-[#8fb6ff] to-[#b3a7ff] bg-clip-text text-transparent">and can&apos;t overspend.</span>
-              </h1>
-              <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-slate-400">
-                A server-enforced leash on an agent that spends your money. Set a budget and per-item caps once; Gofer finds the buy and settles hands-free through PayPal — never past your limits.
-              </p>
-              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                {["Reasons on Meta Muse", "Settles via PayPal", "Shops Channel3"].map((t, i) => (
-                  <span key={t} className="flex items-center gap-2">
-                    {i > 0 && <span className="text-slate-700">·</span>}
-                    <span className="text-slate-400">{t}</span>
+            <h1 className="mt-8 max-w-3xl text-[2.6rem] font-semibold leading-[1.04] tracking-[-0.03em] text-white sm:text-[3.6rem]">
+              An agent that shops for you —{" "}
+              <span className="bg-gradient-to-r from-[#8fb6ff] to-[#b3a7ff] bg-clip-text text-transparent">and can&apos;t overspend.</span>
+            </h1>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
+              A server-enforced leash on an agent that spends your money. Set a budget and per-item caps once; Gofer finds the buy and settles hands-free through PayPal — never past your limits.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <a href="#try"
+                className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-[#4d8bff] to-[#6a5bff] px-5 py-3 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(106,91,255,0.75)] transition-shadow hover:shadow-[0_12px_32px_-8px_rgba(106,91,255,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b7dff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#070810]">
+                Try a demo errand <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+              </a>
+              <a href="#how"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.03] px-5 py-3 text-sm font-medium text-slate-200 backdrop-blur transition-colors hover:border-white/[0.25] hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b7dff]">
+                See how it works
+              </a>
+            </div>
+            <div className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+              {["Reasons on Meta Muse", "Settles via PayPal", "Shops Channel3"].map((t, i) => (
+                <span key={t} className="flex items-center gap-2">
+                  {i > 0 && <span className="text-slate-700">·</span>}
+                  <span className="text-slate-400">{t}</span>
+                </span>
+              ))}
+              {settledCount > 0 && (
+                <span className="flex items-center gap-2">
+                  <span className="text-slate-700">·</span>
+                  <span className="flex items-center gap-1.5 text-emerald-300">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span aria-hidden className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-safe:animate-ping" />
+                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    </span>
+                    {settledCount} autonomous PayPal settlements, live
                   </span>
-                ))}
-              </div>
+                </span>
+              )}
             </div>
           </motion.header>
 
