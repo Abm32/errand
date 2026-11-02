@@ -41,6 +41,25 @@ const SPRING = {
 const STEPS = ["Searching the catalog", "Reasoning with Meta Muse", "Screening against your Mandate"];
 const STEP_MS = 900;
 
+// Anchor sections for the sticky nav. Order = the order they appear on the page.
+const SECTIONS = [
+  { id: "try", label: "Try it" },
+  { id: "mandate", label: "Mandate" },
+  { id: "autonomous", label: "Autonomous" },
+  { id: "activity", label: "Activity" },
+  { id: "how", label: "How it works" },
+] as const;
+
+// The guided flow: the numbered path a first-time visitor should follow. Steps
+// 1–3 are the manual errand; step 4 surfaces the autonomous workflow so it's
+// never missed. Each chip jumps to the relevant section.
+const FLOW = [
+  { n: "1", label: "Set the leash", hint: "budget + caps, server-side", href: "#mandate" },
+  { n: "2", label: "Send an errand", hint: "a goal in plain English", href: "#try" },
+  { n: "3", label: "Approve & settle", hint: "real PayPal capture, logged", href: "#activity" },
+  { n: "4", label: "Or let it run itself", hint: "standing errands, hands-free", href: "#autonomous" },
+] as const;
+
 const DEFAULT = {
   label: "Mom's birthday gift",
   budgetCents: 5000,
@@ -234,29 +253,12 @@ export default function Home() {
           <div className="aurora-blob drift-b" style={{ bottom: "-18%", left: "-10%", width: "46rem", height: "40rem", background: "radial-gradient(circle, rgba(106,91,255,0.40), transparent 62%)" }} />
           <div className="aurora-blob drift-c" style={{ top: "28%", left: "38%", width: "34rem", height: "30rem", background: "radial-gradient(circle, rgba(143,182,255,0.18), transparent 60%)" }} />
         </div>
-        <div className="relative mx-auto max-w-5xl px-4 py-10">
+        <NavBar live={liveAutonomy} mandateId={mandateId} />
+        <div id="top" className="relative mx-auto max-w-5xl px-4 py-10">
           <motion.header initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={SPRING.stiff} className="mb-9">
             <div className="flex items-center gap-2.5">
               <AgentOrb active={thinking} reduce={!!reduce} />
-              <span className="text-lg font-semibold tracking-[-0.03em] text-white">gofer</span>
-              <div className="ml-auto hidden items-center gap-2 sm:flex">
-                <AnimatePresence>
-                  {liveAutonomy && (
-                    <motion.span key="live" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={SPRING.snappy}
-                      className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span aria-hidden className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-safe:animate-ping" />
-                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                      </span>
-                      agent running autonomously
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-                <span className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-400">
-                  <span className={`h-1.5 w-1.5 rounded-full ${mandateId ? "bg-emerald-400" : "bg-slate-600"}`} />
-                  {mandateId ? "mandate enforced server-side" : "connecting…"}
-                </span>
-              </div>
+              <span className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Agentic commerce, on a leash you hold</span>
             </div>
             <div className="mt-8 max-w-2xl">
               <h1 className="text-[2.1rem] font-semibold leading-[1.1] tracking-[-0.03em] text-white sm:text-[2.6rem]">
@@ -298,11 +300,15 @@ export default function Home() {
             ))}
           </motion.div>
 
+          {/* Guided flow — the numbered path, so neither workflow is missed */}
+          <GuidedFlow />
+
           <div className="grid gap-6 md:grid-cols-[1fr_340px]">
             {/* LEFT */}
             <section className="space-y-5">
-              <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.smooth, delay: 0.05 }}
-                className="relative rounded-2xl border border-[#4d8bff]/25 bg-white/[0.03] p-5 shadow-[0_0_0_1px_rgba(77,139,255,0.08),0_26px_70px_-34px_rgba(106,91,255,0.55)] backdrop-blur">
+              <motion.div id="try" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.smooth, delay: 0.05 }}
+                className="relative scroll-mt-24 rounded-2xl border border-[#4d8bff]/25 bg-white/[0.03] p-5 shadow-[0_0_0_1px_rgba(77,139,255,0.08),0_26px_70px_-34px_rgba(106,91,255,0.55)] backdrop-blur">
+                <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-[#8fb6ff]">Workflow 1 · Send a one-off errand</p>
                 <div className="mb-3 flex flex-wrap gap-2">
                   {([
                     ["🎁 Auto-approved buy", "A cheap seed pack for the garden under $18"],
@@ -422,16 +428,16 @@ export default function Home() {
                 )}
               </AnimatePresence>
 
-              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
+              <div id="activity" className="scroll-mt-24 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
                 <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400"><Receipt size={13} strokeWidth={2.2} /> Activity ledger <span className="ml-auto normal-case tracking-normal text-slate-500">sortable · filterable</span></p>
                 <LedgerGrid rows={ledger} />
               </div>
             </section>
 
             {/* RIGHT */}
-            <motion.aside initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.smooth, delay: 0.1 }} className="space-y-5">
+            <motion.aside id="mandate" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.smooth, delay: 0.1 }} className="scroll-mt-24 space-y-5">
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 backdrop-blur">
-                <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400"><Wallet size={13} strokeWidth={2.2} /> Mandate</p>
+                <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400"><Wallet size={13} strokeWidth={2.2} /> Mandate <span className="ml-auto rounded-full bg-[#4d8bff]/10 px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[#8fb6ff]">Step 1 · the leash</span></p>
                 <p className="mb-3 text-sm font-medium">{mandate.label}</p>
                 <div className="mb-2 h-2 overflow-hidden rounded-full bg-white/[0.07]">
                   <motion.div className="h-full origin-left rounded-full" style={{ backgroundColor: meterColor }}
@@ -506,13 +512,14 @@ export default function Home() {
           </div>
 
           {/* Standing errands — recurring, mandate-bound jobs on a Bryntum Gantt */}
-          <motion.section initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={SPRING.smooth}
-            className="mt-14 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 backdrop-blur">
+          <motion.section id="autonomous" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={SPRING.smooth}
+            className="mt-14 scroll-mt-24 rounded-2xl border border-[#4d8bff]/20 bg-white/[0.03] p-5 backdrop-blur">
+            <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-[#8fb6ff]">Workflow 2 · Standing errands that run themselves</p>
             <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1">
               <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
                 <Receipt size={13} strokeWidth={2.2} /> Standing errands
               </p>
-              <span className="text-xs text-slate-500">recurring, mandate-bound — click a run to send it now</span>
+              <span className="text-xs text-slate-500">recurring, mandate-bound, fire autonomously — click a run to send it now</span>
               <span className="ml-auto flex items-center gap-3 text-[11px] text-slate-500">
                 <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-emerald-400" /> ran</span>
                 <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-[#4d8bff]" /> scheduled</span>
@@ -522,13 +529,15 @@ export default function Home() {
           </motion.section>
 
           {/* How it works */}
-          <section className="mt-16">
-            <p className="mb-5 text-center text-xs font-medium uppercase tracking-[0.2em] text-slate-500">How it works</p>
-            <div className="grid gap-4 sm:grid-cols-3">
+          <section id="how" className="mt-16 scroll-mt-24">
+            <p className="mb-2 text-center text-xs font-medium uppercase tracking-[0.2em] text-slate-500">How it works</p>
+            <p className="mx-auto mb-5 max-w-md text-center text-sm text-slate-400">Two ways to use Gofer — send a one-off errand, or set standing errands that run themselves. Both pass the same server-enforced Mandate.</p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {([
                 ["01", "Grant a mandate", "Set a budget, a per-item cap, allowed categories and blocked merchants. It lives on the server — the agent can't exceed it."],
                 ["02", "The agent works", "Gofer searches real products and reasons with Meta Muse to pick the best buy within your limits."],
                 ["03", "Approve → PayPal settles", "Small buys clear automatically; bigger ones wait for one tap. Every charge is a real PayPal capture, logged."],
+                ["04", "Or let it run itself", "Standing errands fire on a schedule and settle hands-free — still bound by the same mandate, denied the instant the budget's spent."],
               ] as const).map(([n, t, d], i) => (
                 <motion.div key={n} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ ...SPRING.smooth, delay: i * 0.06 }}
                   className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
@@ -558,6 +567,76 @@ export default function Home() {
         </div>
       </main>
     </MotionConfig>
+  );
+}
+
+function NavBar({ live, mandateId }: { live: boolean; mandateId: string | null }) {
+  return (
+    <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#070810]/80 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
+        <a href="#top" className="flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b7dff]">
+          <LogoMark className="h-6 w-6" />
+          <span className="text-sm font-semibold tracking-[-0.03em] text-white">gofer</span>
+        </a>
+        <div className="ml-2 hidden items-center gap-0.5 md:flex">
+          {SECTIONS.map((s) => (
+            <a key={s.id} href={`#${s.id}`}
+              className="rounded-full px-3 py-1.5 text-xs text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b7dff]">
+              {s.label}
+            </a>
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <AnimatePresence>
+            {live && (
+              <motion.span key="live" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={SPRING.snappy}
+                className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span aria-hidden className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-safe:animate-ping" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                </span>
+                <span className="hidden sm:inline">running autonomously</span>
+                <span className="sm:hidden">live</span>
+              </motion.span>
+            )}
+          </AnimatePresence>
+          <span className="hidden items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-400 sm:flex">
+            <span className={`h-1.5 w-1.5 rounded-full ${mandateId ? "bg-emerald-400" : "bg-slate-600"}`} />
+            {mandateId ? "mandate enforced server-side" : "connecting…"}
+          </span>
+        </div>
+      </div>
+      {/* mobile section links — horizontal scroll under the bar */}
+      <div className="flex gap-1 overflow-x-auto px-4 pb-2 md:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {SECTIONS.map((s) => (
+          <a key={s.id} href={`#${s.id}`}
+            className="shrink-0 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs text-slate-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b7dff]">
+            {s.label}
+          </a>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+function GuidedFlow() {
+  return (
+    <motion.ol initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.smooth, delay: 0.18 }}
+      className="mb-8 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      {FLOW.map((f, i) => (
+        <motion.li key={f.n} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.snappy, delay: 0.2 + i * 0.05 }}>
+          <a href={f.href}
+            className="group flex h-full items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3.5 py-3 transition-colors hover:border-[#4d8bff]/40 hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b7dff]">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-[#4d8bff]/30 bg-[#4d8bff]/10 font-mono text-xs text-[#8fb6ff]">{f.n}</span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium text-white">{f.label}</span>
+              <span className="block truncate text-xs text-slate-400">{f.hint}</span>
+            </span>
+            <span aria-hidden className="ml-auto text-slate-600 transition-transform group-hover:translate-x-0.5 group-hover:text-[#8fb6ff]">→</span>
+          </a>
+        </motion.li>
+      ))}
+    </motion.ol>
   );
 }
 
