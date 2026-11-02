@@ -14,7 +14,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence, MotionConfig, useReducedMotion } from "framer-motion";
-import { ShieldCheck, Sparkles, Wallet, Receipt, ScanSearch } from "lucide-react";
+import { ShieldCheck, Sparkles, Wallet, ScanSearch } from "lucide-react";
 
 // AG Grid is client-only; load it without SSR to avoid hydration mismatch.
 const LedgerGrid = dynamic(() => import("./LedgerGrid"), { ssr: false });
@@ -281,7 +281,7 @@ export default function Home() {
 
           {/* Feature band */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.smooth, delay: 0.12 }}
-            className="mb-6 grid gap-3 sm:grid-cols-3">
+            className="mb-10 grid gap-3 sm:grid-cols-3">
             {([
               [ShieldCheck, "Server-enforced Mandate", "Budget, caps and categories live on the server — the agent can't exceed them."],
               [Sparkles, "Reasons with Meta Muse", "A real model picks the best buy within your limits."],
@@ -303,12 +303,15 @@ export default function Home() {
           {/* Guided flow — the numbered path, so neither workflow is missed */}
           <GuidedFlow />
 
-          <div className="grid gap-6 md:grid-cols-[1fr_340px]">
-            {/* LEFT */}
+          {/* ===== Workflow 1 — set the leash + send a one-off errand ===== */}
+          <SectionHead id="try" className="mt-16" eyebrow="Workflow 1"
+            title="Set the leash, then send an errand"
+            desc="Grant a Mandate on the right; hand the agent a goal in plain English on the left. Every pick is screened server-side before any money moves — buy, ask, deny, or abstain." />
+          <div className="mt-6 grid gap-6 md:grid-cols-[1fr_360px] lg:gap-8">
+            {/* LEFT — the errand composer + the agent's live output */}
             <section className="space-y-5">
-              <motion.div id="try" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.smooth, delay: 0.05 }}
-                className="relative scroll-mt-24 rounded-2xl border border-[#4d8bff]/25 bg-white/[0.03] p-5 shadow-[0_0_0_1px_rgba(77,139,255,0.08),0_26px_70px_-34px_rgba(106,91,255,0.55)] backdrop-blur">
-                <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-[#8fb6ff]">Workflow 1 · Send a one-off errand</p>
+              <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.smooth, delay: 0.05 }}
+                className="relative rounded-2xl border border-[#4d8bff]/25 bg-white/[0.03] p-5 shadow-[0_0_0_1px_rgba(77,139,255,0.08),0_26px_70px_-34px_rgba(106,91,255,0.55)] backdrop-blur">
                 <div className="mb-3 flex flex-wrap gap-2">
                   {([
                     ["🎁 Auto-approved buy", "A cheap seed pack for the garden under $18"],
@@ -428,10 +431,6 @@ export default function Home() {
                 )}
               </AnimatePresence>
 
-              <div id="activity" className="scroll-mt-24 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
-                <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400"><Receipt size={13} strokeWidth={2.2} /> Activity ledger <span className="ml-auto normal-case tracking-normal text-slate-500">sortable · filterable</span></p>
-                <LedgerGrid rows={ledger} />
-              </div>
             </section>
 
             {/* RIGHT */}
@@ -511,16 +510,23 @@ export default function Home() {
             </motion.aside>
           </div>
 
-          {/* Standing errands — recurring, mandate-bound jobs on a Bryntum Gantt */}
-          <motion.section id="autonomous" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={SPRING.smooth}
-            className="mt-14 scroll-mt-24 rounded-2xl border border-[#4d8bff]/20 bg-white/[0.03] p-5 backdrop-blur">
-            <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-[#8fb6ff]">Workflow 2 · Standing errands that run themselves</p>
-            <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
-                <Receipt size={13} strokeWidth={2.2} /> Standing errands
-              </p>
-              <span className="text-xs text-slate-500">recurring, mandate-bound, fire autonomously — click a run to send it now</span>
-              <span className="ml-auto flex items-center gap-3 text-[11px] text-slate-500">
+          {/* ===== Activity ledger — full width, its own space ===== */}
+          <SectionHead id="activity" className="mt-20" eyebrow="Audit trail"
+            title="Activity ledger"
+            desc="Every move the agent makes — searches, recommendations, approvals, denials, abstains, hands-free captures, and durability markers — written down and sortable." />
+          <motion.div initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={SPRING.smooth}
+            className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
+            <LedgerGrid rows={ledger} />
+          </motion.div>
+
+          {/* ===== Workflow 2 — standing errands ===== */}
+          <SectionHead id="autonomous" className="mt-20" eyebrow="Workflow 2"
+            title="Standing errands that run themselves"
+            desc="Recurring, mandate-bound jobs fire autonomously on a schedule and settle hands-free — click any run to send it now." />
+          <motion.section initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={SPRING.smooth}
+            className="mt-6 rounded-2xl border border-[#4d8bff]/20 bg-white/[0.03] p-5 backdrop-blur">
+            <div className="mb-3 flex items-center justify-end">
+              <span className="flex items-center gap-3 text-[11px] text-slate-500">
                 <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-emerald-400" /> ran</span>
                 <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-[#4d8bff]" /> scheduled</span>
               </span>
@@ -529,7 +535,7 @@ export default function Home() {
           </motion.section>
 
           {/* How it works */}
-          <section id="how" className="mt-16 scroll-mt-24">
+          <section id="how" className="mt-24 scroll-mt-24">
             <p className="mb-2 text-center text-xs font-medium uppercase tracking-[0.2em] text-slate-500">How it works</p>
             <p className="mx-auto mb-5 max-w-md text-center text-sm text-slate-400">Two ways to use Gofer — send a one-off errand, or set standing errands that run themselves. Both pass the same server-enforced Mandate.</p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -567,6 +573,19 @@ export default function Home() {
         </div>
       </main>
     </MotionConfig>
+  );
+}
+
+// A consistent header for each page section — eyebrow + title + one-line
+// description — so every section reads as its own dedicated space.
+function SectionHead({ id, eyebrow, title, desc, className = "" }: { id?: string; eyebrow: string; title: string; desc?: string; className?: string }) {
+  return (
+    <motion.div id={id} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={SPRING.smooth}
+      className={`scroll-mt-24 ${className}`}>
+      <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#8fb6ff]">{eyebrow}</p>
+      <h2 className="mt-1.5 text-xl font-semibold tracking-[-0.02em] text-white sm:text-2xl">{title}</h2>
+      {desc && <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">{desc}</p>}
+    </motion.div>
   );
 }
 
