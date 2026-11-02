@@ -2,7 +2,7 @@
 
 **An autonomous shopping agent that spends your money — only within a mandate you grant.**
 
-- **Live demo:** https://errand-xl2n.onrender.com (Render Standard, always-on)
+- **Live demo:** https://errand-xl2n.onrender.com (Render free tier — first hit after idle may cold-start ~30–50 s)
 - **Verify autonomy:** https://errand-xl2n.onrender.com/api/ledger
 - **Categories:** Best Use of Agentic Commerce · Best Use of PayPal + AI
 - **License:** MIT
@@ -56,7 +56,7 @@ wallet — stopping the instant the Mandate says stop.
 |---|---|
 | **PayPal** | Orders v2 (create + capture) and Vault v3 (setup token → payment token) for hands-free, merchant-initiated settlement. Sandbox by design; live is a one-flag change. `lib/adapters/paypal.ts` |
 | **Channel3** | Real product catalog search (`/v1/search`) — title, price, merchant, buyable offer URL, image. `lib/adapters/channel3.ts` |
-| **Render** | Single long-lived web service (Standard, always-on) — one instance keeps the file-backed store authoritative. `render.yaml` |
+| **Render** | Single long-lived web service — one instance keeps the file-backed store authoritative. `render.yaml` targets Standard + a `/var/data` disk; live demo currently free-tier. `render.yaml` |
 | **AG Grid** | The audit ledger grid. `app/LedgerGrid.tsx` |
 | **Bryntum Gantt** | Standing-errand schedule view. `app/StandingGantt.tsx` |
 | **AI SDK + Meta Muse (Baseten)** | Tool-calling agent loop (`search` → `recommend`) on Meta Muse hosted by Baseten; deterministic fallback with no key. `lib/agent.ts` |
@@ -83,11 +83,15 @@ ledger and budget meter update live.
 
 - **PayPal is sandbox** — deliberate, for a public demo that spends unattended.
   `PAYPAL_ENV=live` + live creds flips it; settlement code is identical.
-- **File-backed store on a persistent Render disk** (`/var/data`) — spend and the
-  ledger survive restarts and redeploys, so the budget cap holds across reboots.
-  Single-instance; Postgres for real concurrency/scale.
-- **The demo mandate is a daily allowance** — spend is durable and the cap
-  genuinely binds until it resets once every 24 h (a real spend-limit primitive).
+- **File-backed store, disk-durable by design** — JSON files; `render.yaml`
+  provisions a `/var/data` Render disk so that **on a paid plan** spend and the
+  ledger survive restarts and redeploys (`load()` preserves persisted spend).
+  **Honest live status:** the demo runs on the **Free** plan (no disk), so spend
+  resets on redeploy and the boot `"system"` entry reads **$0.00** — a paid plan
+  makes it non-zero. Single-instance; Postgres for real concurrency/scale.
+- **The demo mandate is a daily allowance** — the cap genuinely binds and resets
+  once every 24 h (a real spend-limit primitive); allowance set low (~$50) so
+  deplete→deny is observable within minutes.
   Once the day's budget is spent, the agent's own scheduled runs are **denied by
   the Mandate** until the next reset. Errands re-fire on a ~2.5 min cadence so
   there's always fresh activity to watch.

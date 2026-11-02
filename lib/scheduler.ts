@@ -19,11 +19,13 @@ import { autoSettle } from "./settle";
 const CHECK_MS = 10_000; // scan for due errands every 10s
 const CADENCE_MS = 150_000; // each errand re-fires ~every 2.5 min (demo cadence)
 const STAGGER_MS = [25_000, 55_000, 85_000]; // first runs land soon after boot, spread out
-// The demo mandate is a DAILY allowance: spend is durable (persisted on disk,
-// survives restarts) and the cap genuinely holds until the allowance resets once
-// every 24h — a real spend-limit primitive, not a cosmetic refill. Within a day
-// the budget truly binds: once spent, the agent's own runs get DENIED by the
-// Mandate (the guardrail, live) until the next daily reset.
+// The demo mandate is a DAILY allowance: the cap genuinely holds until the
+// allowance resets once every 24h — a real spend-limit primitive, not a cosmetic
+// refill. Within a day the budget truly binds: once spent, the agent's own runs
+// get DENIED by the Mandate (the guardrail, live) until the next daily reset.
+// Spend is disk-durable by design (render.yaml mounts /var/data); on the current
+// Free-plan demo there is no disk, so spend is in-memory and resets on redeploy —
+// the boot "system" ledger entry reads $0 until a paid plan attaches the disk.
 const BUDGET_RESET_MS = 24 * 60 * 60_000; // 24h daily allowance reset
 
 const nextAt = new Map<string, number>();

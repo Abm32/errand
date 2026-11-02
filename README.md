@@ -5,7 +5,7 @@
 Submission for the [PayPal AI Hackathon 2026](https://paypalaihackathon.devpost.com/).
 Targets **Best Use of Agentic Commerce** and **Best Use of PayPal + AI**.
 
-**▶ Live demo: https://errand-xl2n.onrender.com** _(Render Standard, always-on — no cold-start wait.)_
+**▶ Live demo: https://errand-xl2n.onrender.com** _(Live demo runs on Render's free tier, so the first hit after an idle period may cold-start — give it ~30–50 s.)_
 
 ---
 
@@ -163,7 +163,8 @@ lib/standing.ts           standing-errand definitions + Bryntum Gantt task proje
 - **PayPal** — Orders v2 (create + capture) and Vault v3 (setup + payment tokens)
   for hands-free, merchant-initiated settlement.
 - **Channel3** — real product catalog search.
-- **Render** — single long-lived web service (Standard, always-on).
+- **Render** — single long-lived web service (`render.yaml` targets Standard + a
+  `/var/data` disk; live demo currently on the free tier).
 - **Next.js 16** (App Router, React 19), **Tailwind v4**, **webpack** build.
 - **AG Grid** — audit ledger. **Bryntum Gantt** — standing-errand schedule.
 - **AI SDK** (`ai`) tool-calling loop on **Meta Muse via Baseten**.
@@ -203,18 +204,24 @@ standing errands fire in dev.
   hackathon demo that spends money unattended, not a limitation. Going live is a
   **one-flag change**: `PAYPAL_ENV=live` + live credentials. The settlement code
   is identical.
-- **File-backed store on a persistent disk.** Mandates, spend, and the ledger are
-  JSON files (`lib/store.ts`, `lib/ledger.ts`) on a mounted **Render persistent
-  disk** (`/var/data`), so the server-authoritative spend and the audit ledger
-  **survive restarts and redeploys** — the "can't overspend" guarantee holds
-  across reboots, not just within one process. Single instance keeps that one
-  file authoritative; for multi-instance scale, back it with Postgres.
-- **The demo mandate is a daily allowance.** Spend is durable and the cap
-  genuinely binds until the allowance resets once every **24 h** — a real
-  spend-limit primitive. Within a day the budget truly holds: once spent, the
-  agent's own scheduled runs are **denied by the Mandate** (the guardrail, live)
-  until the next daily reset. Standing errands re-fire on a short demo cadence
-  (~2.5 min) so there's always fresh activity to watch.
+- **File-backed store, disk-durable by design.** Mandates, spend, and the ledger
+  are plain JSON files (`lib/store.ts`, `lib/ledger.ts`). `render.yaml` provisions
+  a mounted **Render persistent disk** (`/var/data`) so that **on a paid plan**
+  the server-authoritative spend and ledger **survive restarts and redeploys** —
+  the "can't overspend across reboots" guarantee. `load()` reads the file first
+  and preserves persisted spend, so the plumbing is wired and ready.
+  **Honest live status:** the demo currently runs on Render's **Free** plan, which
+  supports **no disk**, so spend resets on redeploy and the boot `"system"` ledger
+  entry reads **$0.00** — that entry is exactly how you can tell. Attaching the disk
+  (paid plan) flips it to a non-zero "spend $X carried" after a redeploy. Single
+  instance keeps one file authoritative; Postgres for multi-instance scale.
+- **The demo mandate is a daily allowance.** The cap genuinely binds and resets
+  once every **24 h** — a real spend-limit primitive. Within a day the budget truly
+  holds: once spent, the agent's own scheduled runs are **denied by the Mandate**,
+  verifiable live as `denied` entries in the ledger. The allowance is set low
+  (~$50) so the deplete→deny arc plays out within a few minutes of watching.
+  Standing errands re-fire on a ~2.5 min demo cadence so there's always fresh
+  activity to watch.
 - **Standing-errand Gantt is a projection.** The Bryntum Gantt projects the
   cadence deterministically for display; the autonomous firing is the real
   scheduler in `lib/scheduler.ts`.
