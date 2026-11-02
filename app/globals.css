@@ -71,3 +71,33 @@ body::after {
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto; }
 }
+
+/* Subtle grid backdrop — premium depth, faded with a radial mask. */
+.grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.045) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: radial-gradient(ellipse 75% 60% at 50% 0%, #000 35%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 75% 60% at 50% 0%, #000 35%, transparent 100%);
+}
+
+/* Gradient hairline border card — the premium tell on panels. */
+.premium-card { position: relative; }
+.premium-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(143,182,255,0.4), rgba(106,91,255,0.18) 45%, rgba(255,255,255,0.04) 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Soft brand spotlight glow for hero backdrops. */
+.spotlight {
+  background: radial-gradient(ellipse 50% 45% at 50% 20%, rgba(77,139,255,0.22), transparent 70%);
+}

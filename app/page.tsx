@@ -53,7 +53,9 @@ export default function Landing() {
 
         <div id="top" className="relative mx-auto max-w-5xl px-4">
           {/* Hero */}
-          <header className="flex min-h-[78vh] flex-col justify-center py-10">
+          <header className="relative flex min-h-[80vh] flex-col justify-center py-10">
+            <div aria-hidden className="grid-bg absolute inset-x-0 top-0 -z-10 h-[130%]" />
+            <div aria-hidden className="spotlight pointer-events-none absolute inset-0 -z-10" />
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={SPRING.stiff} className="flex items-center gap-2.5">
               <AgentOrb active reduce={!!reduce} />
               <span className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Agentic commerce, on a leash you hold</span>
@@ -87,6 +89,47 @@ export default function Landing() {
                 </span>
               ))}
             </motion.div>
+
+            {/* Framed product preview — a peek at the real dashboard */}
+            <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.smooth, delay: 0.38 }}
+              className="premium-card mt-16 overflow-hidden rounded-2xl bg-[#0a0c16]/80 shadow-[0_50px_140px_-50px_rgba(106,91,255,0.6)] backdrop-blur">
+              <div className="flex items-center gap-2 border-b border-white/[0.06] bg-white/[0.02] px-4 py-2.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-rose-400/70" />
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
+                <span className="ml-3 truncate rounded-md border border-white/[0.07] bg-black/30 px-3 py-1 text-[11px] text-slate-500">errand-xl2n.onrender.com/dashboard</span>
+              </div>
+              <div className="grid gap-4 p-5 sm:grid-cols-[1fr_1.15fr]">
+                <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-4">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-400">Mandate · the leash</p>
+                  <p className="mt-2 text-sm font-medium text-white">Gofer demo</p>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.07]">
+                    <div className="h-full w-[94%] rounded-full bg-gradient-to-r from-[#4d8bff] to-[#f43f5e]" />
+                  </div>
+                  <p className="mt-2 text-xs text-slate-400"><span className="font-mono text-slate-200">$46.86</span> spent · <span className="font-mono text-slate-200">$3.14</span> left</p>
+                  <div className="mt-3 space-y-1.5 text-[11px]">
+                    <div className="flex justify-between"><span className="text-slate-400">Per-item cap</span><span className="font-mono text-slate-200">$50.00</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Auto-approve under</span><span className="font-mono text-slate-200">$30.00</span></div>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-4">
+                  <p className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">Activity <span className="ml-auto flex items-center gap-1.5 normal-case tracking-normal text-emerald-300"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> live</span></p>
+                  <div className="mt-2 space-y-1.5 font-mono text-[11px]">
+                    {([
+                      ["Bought Organic Coffee · $10.35", "PayPal ✓", "text-emerald-300", "border-emerald-500/30 bg-emerald-500/[0.08]"],
+                      ["$18.90 exceeds remaining $3.14", "denied", "text-rose-300", "border-rose-500/30 bg-rose-500/[0.08]"],
+                      ["No on-goal match — abstained", "skipped", "text-slate-300", "border-white/[0.08] bg-white/[0.03]"],
+                      ["Server booted — $46.86 carried", "durable", "text-[#b9aeff]", "border-[#6a5bff]/30 bg-[#6a5bff]/[0.08]"],
+                    ] as const).map(([left, right, tone, chip]) => (
+                      <div key={left} className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${chip}`}>
+                        <span className="min-w-0 flex-1 truncate text-slate-200">{left}</span>
+                        <span className={`shrink-0 ${tone}`}>{right}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </header>
 
           {/* Pillars */}
@@ -97,7 +140,7 @@ export default function Landing() {
               [Wallet, "Real PayPal settlement", "Every charge is a real PayPal capture via Orders v2 + Vault v3 — hands-free once your wallet's linked."],
             ] as const).map(([Icon, t, d], i) => (
               <motion.div key={t} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ ...SPRING.smooth, delay: i * 0.06 }}
-                className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5 backdrop-blur">
+                className="premium-card rounded-2xl bg-white/[0.025] p-5 backdrop-blur transition-shadow hover:shadow-[0_24px_70px_-34px_rgba(106,91,255,0.7)]">
                 <span className="grid h-9 w-9 place-items-center rounded-lg border border-[#4d8bff]/30 bg-[#4d8bff]/10 text-[#8fb6ff]">
                   <Icon size={18} strokeWidth={2} />
                 </span>
