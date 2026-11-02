@@ -31,6 +31,9 @@ export type GanttTask = {
   durationUnit?: "day";
   percentDone?: number;
   expanded?: boolean;
+  // Honor our explicit startDate instead of letting the Gantt engine auto-schedule
+  // every run to the project start (which piles all bars at the window's left edge).
+  manuallyScheduled?: boolean;
   goal: string;
   children?: GanttTask[];
 };
@@ -74,6 +77,7 @@ export function ganttTasks(now: number = Date.now()): { tasks: GanttTask[]; proj
         duration: 1,
         durationUnit: "day",
         percentDone: done ? 100 : 0,
+        manuallyScheduled: true,
         goal: e.goal,
       });
     }
