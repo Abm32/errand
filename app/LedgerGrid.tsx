@@ -51,6 +51,8 @@ const KIND: Record<string, { label: string; color: string; bg: string }> = {
   purchased: { label: "purchased", color: "#6ee7b7", bg: "rgba(16,185,129,0.15)" },
   needs_approval: { label: "needs approval", color: "#f5b544", bg: "rgba(245,181,68,0.14)" },
   denied: { label: "denied", color: "#ff8f8f", bg: "rgba(244,63,94,0.15)" },
+  verified: { label: "verified", color: "#6ee7b7", bg: "rgba(16,185,129,0.15)" },
+  system: { label: "system", color: "#9aa4bd", bg: "rgba(255,255,255,0.06)" },
 };
 
 // Autonomous scheduled runs reuse the indigo end of the brand gradient — distinct

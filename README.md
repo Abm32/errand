@@ -76,7 +76,14 @@ curl https://errand-xl2n.onrender.com/api/ledger
 Watch for `"(scheduled)"` purchase entries carrying real PayPal `orderId` /
 `captureId`s, with the mandate's `spentCents` growing — all produced with **zero
 user interaction**. Reload a few times (the UI polls this same endpoint) and you
-will see new autonomous runs appear and spend climb. The budget is a **daily
+will see new autonomous runs appear and spend climb.
+
+**Durability, demonstrated in-ledger:** on every server boot the scheduler writes
+a `"system"` entry — _"Server booted — spend $X carried from persistent disk"_ —
+read straight off the mounted disk at startup. After a redeploy, a **non-zero**
+value there is live proof the server-authoritative spend survived the restart
+(the "can't overspend across reboots" guarantee, shown rather than asserted); a
+`$0.00` means a genuinely fresh disk, shown honestly. The budget is a **daily
 allowance**: once the day's budget is spent, the Mandate **denies** the agent's
 own scheduled runs until the 24 h reset — the guardrail, enforced live.
 

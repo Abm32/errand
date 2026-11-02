@@ -71,6 +71,10 @@ wallet — stopping the instant the Mandate says stop.
    grows — no user action. The budget is a **daily allowance**: once the day's
    budget is spent the Mandate **denies** the agent's own runs until the 24 h
    reset (so denials show once the allowance is exhausted, not every minute).
+4. **Durability is shown in the ledger, not just claimed:** each boot writes a
+   `"system"` entry reading the persisted spend off the mounted disk. A non-zero
+   _"spend $X carried from persistent disk"_ after a redeploy is live proof the
+   cap survives restarts; `$0.00` means a fresh disk, shown honestly.
 
 The UI at the live URL polls that same endpoint, so you can also just watch the
 ledger and budget meter update live.

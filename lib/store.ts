@@ -31,12 +31,15 @@ const file = () => process.env.STORE_FILE ?? path.join(process.cwd(), ".data", "
 export const DEMO_MANDATE_ID = "md_demo";
 
 /**
- * On hosts with an ephemeral disk (Render free tier wipes it on every
- * restart/deploy), store.json vanishes and a linked vault is lost mid-judging.
- * Env vars DO survive cold starts, so they are the durable seed: set
- * DEMO_MANDATE to the mandate JSON (incl. vaultId) and it is re-created under
- * DEMO_MANDATE_ID on every boot. spentCents resets to 0 — fine (and tidy) for a
- * demo. ponytail: env-seed, not a DB; use Postgres when spend must truly persist.
+ * Config seed for the demo mandate. DEMO_MANDATE holds the mandate CONFIG
+ * (caps, categories, vaultId) as JSON in an env var, which survives cold starts
+ * even where a disk does not. It is a FALLBACK: load() reads store.json first,
+ * so if a persisted demo mandate already exists (incl. its running spentCents),
+ * this early-returns and the DURABLE SPEND IS PRESERVED. The env seed only
+ * creates the mandate at spentCents:0 on a genuinely fresh disk with no prior
+ * store.json. So on the mounted Render disk, spend carries across restarts;
+ * the env var just guarantees the mandate config can't be lost.
+ * ponytail: env-seed + single JSON file, not a DB; use Postgres for multi-instance.
  */
 function seedFromEnv() {
   const raw = process.env.DEMO_MANDATE;
@@ -122,8 +125,9 @@ export function addSpent(mandateId: string, cents: number): Mandate | undefined 
   return next;
 }
 
-/** Demo-only: refill the seeded demo mandate's budget by zeroing its spend, so
- *  the autonomous scheduler's deplete→deny→refill cycle keeps showing activity. */
+/** Demo-only: reset the seeded demo mandate's daily allowance by zeroing its
+ *  spend. Called once every 24h by the scheduler — a real allowance reset, not
+ *  a cosmetic refill; within a day the cap binds and runs get denied when spent. */
 export function resetDemoSpend(): Mandate | undefined {
   load();
   const m = mandates.get(DEMO_MANDATE_ID);
