@@ -168,7 +168,7 @@ export default function LedgerGrid({ rows }: { rows: LedgerRow[] }) {
   );
 
   return (
-    <div style={{ width: "100%", height: 320 }}>
+    <div style={{ width: "100%", height: "clamp(440px, 68vh, 760px)" }}>
       <AgGridReact<LedgerRow>
         theme={theme}
         rowData={rows}

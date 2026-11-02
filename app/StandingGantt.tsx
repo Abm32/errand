@@ -8,7 +8,7 @@
 // Bryntum reads the DOM at construction, so this is client-only (imported via
 // next/dynamic with ssr:false from page.tsx). CSS import order is required:
 // fontawesome -> solid -> structural gantt.css -> dark theme.
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { BryntumGantt } from "@bryntum/gantt-react";
 import "@bryntum/gantt/fontawesome/css/fontawesome.css";
 import "@bryntum/gantt/fontawesome/css/solid.css";
@@ -24,6 +24,7 @@ export default function StandingGantt({
   disabled?: boolean;
 }) {
   const { tasks, projectStart } = useMemo(() => ganttTasks(), []);
+  const fitted = useRef(false);
 
   const columns = useMemo(
     () => [{ type: "name" as const, text: "Standing errand", field: "name", width: 260 }],
@@ -40,6 +41,13 @@ export default function StandingGantt({
         rowHeight={54}
         barMargin={12}
         readOnly
+        // Zoom the timeline to fit the runs once, so bars spread across the full
+        // width instead of clustering at the window start.
+        onPaint={({ source }: { source: { zoomToFit: (o?: { leftMargin?: number; rightMargin?: number }) => void } }) => {
+          if (fitted.current) return;
+          fitted.current = true;
+          source.zoomToFit({ leftMargin: 24, rightMargin: 24 });
+        }}
         // A task is a real trigger: hand its goal to the agent, let the Mandate decide.
         onTaskClick={({ taskRecord }: { taskRecord: { getData: (f: string) => string } }) => {
           if (!disabled) onRun(taskRecord.getData("goal"));
