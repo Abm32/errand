@@ -19,14 +19,15 @@ import { autoSettle } from "./settle";
 const CHECK_MS = 10_000; // scan for due errands every 10s
 const CADENCE_MS = 150_000; // each errand re-fires ~every 2.5 min (demo cadence)
 const STAGGER_MS = [25_000, 55_000, 85_000]; // first runs land soon after boot, spread out
-// The demo mandate is a DAILY allowance: the cap genuinely holds until the
-// allowance resets once every 24h — a real spend-limit primitive, not a cosmetic
-// refill. Within a day the budget truly binds: once spent, the agent's own runs
-// get DENIED by the Mandate (the guardrail, live) until the next daily reset.
+// The demo mandate is a spend allowance: the cap genuinely holds until it resets.
+// The allowance primitive is DAILY (24h) in production; the live DEMO resets on a
+// short cadence (~15 min) so a judge can watch the full deplete -> deny -> reset
+// arc in one sitting instead of waiting a day. Either way the cap truly binds:
+// once spent, the agent's own runs get DENIED by the Mandate until the next reset.
 // Spend is disk-durable: STORE_FILE/LEDGER_FILE point at the mounted /var/data
 // disk, so it survives restarts and redeploys (the boot "system" ledger entry
 // reads the carried spend after a reboot — durability shown live, not asserted).
-const BUDGET_RESET_MS = 24 * 60 * 60_000; // 24h daily allowance reset
+const BUDGET_RESET_MS = 15 * 60_000; // demo: reset every 15 min so the arc is watchable (prod: 24h)
 
 const nextAt = new Map<string, number>();
 let lastReset = Date.now();
@@ -80,6 +81,9 @@ function tick(): void {
   if (now - lastReset > BUDGET_RESET_MS) {
     resetDemoSpend();
     lastReset = now;
+    // Make the reset observable: a judge watching the ledger sees the allowance
+    // refresh, closing the deplete -> deny -> reset loop live (prod cadence: 24h).
+    record({ kind: "system", summary: "Allowance reset — budget refreshed for the new window", detail: "Spend reset to $0.00; the Mandate's cap binds again until the next reset (demo cadence ~15 min; 24h in production)." });
   }
   for (const e of ERRANDS) {
     const due = nextAt.get(e.id) ?? 0;

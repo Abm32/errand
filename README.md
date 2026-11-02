@@ -83,9 +83,11 @@ a `"system"` entry — _"Server booted — spend $X carried from persistent disk
 read straight off the mounted disk at startup. After a redeploy, a **non-zero**
 value there is live proof the server-authoritative spend survived the restart
 (the "can't overspend across reboots" guarantee, shown rather than asserted); a
-`$0.00` means a genuinely fresh disk, shown honestly. The budget is a **daily
-allowance**: once the day's budget is spent, the Mandate **denies** the agent's
-own scheduled runs until the 24 h reset — the guardrail, enforced live.
+`$0.00` means a genuinely fresh disk, shown honestly. The budget is a spend
+allowance (**daily/24 h in production**; a short **~15 min** reset in this demo so
+the arc is watchable): once it's spent the Mandate **denies** the agent's own
+scheduled runs (`denied` entries), then the allowance **resets** (a `system`
+"Allowance reset" entry) and buying resumes — the full guardrail loop, live.
 
 ## AI model
 
@@ -214,13 +216,15 @@ standing errands fire in dev.
   _"Server booted — spend $29.67 carried from persistent disk"_) — durability
   shown, not asserted. Single instance keeps one file authoritative; Postgres for
   multi-instance scale.
-- **The demo mandate is a daily allowance.** Spend is durable (above) and the cap
-  genuinely binds and resets once every **24 h** — a real spend-limit primitive.
-  Within a day the budget truly holds: once spent, the agent's own scheduled runs
-  are **denied by the Mandate**, verifiable live as `denied` entries in the ledger.
-  The allowance is set low (~$50) so the deplete→deny arc plays out within a few
-  minutes of watching. Standing errands re-fire on a ~2.5 min demo cadence so
-  there's always fresh activity to watch.
+- **The demo mandate is a spend allowance you can watch bind and reset.** Spend is
+  durable (above) and the cap genuinely holds — a real spend-limit primitive,
+  **daily (24 h) in production**. The live demo uses a low ~$50 allowance and a
+  short **~15 min reset** so the whole arc is watchable in one sitting: on-goal
+  buys clear → the budget depletes → the agent's own scheduled runs are **denied by
+  the Mandate** (`denied` entries) → the allowance **resets** (a `system`
+  "Allowance reset" entry) → buying resumes. When no catalog item matches a goal,
+  the agent **abstains** (a `system` "No on-goal match" entry) rather than buying
+  off-goal. Standing errands re-fire on a ~2.5 min cadence.
 - **Standing-errand Gantt is a projection.** The Bryntum Gantt projects the
   cadence deterministically for display; the autonomous firing is the real
   scheduler in `lib/scheduler.ts`.

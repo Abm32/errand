@@ -67,10 +67,13 @@ wallet — stopping the instant the Mandate says stop.
 1. Open https://errand-xl2n.onrender.com/api/ledger (or hit it with `curl`).
 2. Look for `"(scheduled)"` purchase entries carrying real PayPal `orderId` and
    `captureId`s, with the mandate's `spentCents` climbing.
-3. Reload after a minute or two: new autonomous runs appear and `spentCents`
-   grows — no user action. The budget is a **daily allowance**: once the day's
-   budget is spent the Mandate **denies** the agent's own runs until the 24 h
-   reset (so denials show once the allowance is exhausted, not every minute).
+3. Reload over a few minutes and watch the full arc: on-goal buys clear →
+   `spentCents` climbs to the ~$50 allowance → the Mandate **denies** the agent's
+   own runs (`denied` entries) → the allowance **resets** (a `system` "Allowance
+   reset" entry) and buying resumes. The allowance is **daily (24 h) in
+   production**; this demo resets every **~15 min** so the whole loop is watchable.
+   When nothing matches a goal, the agent **abstains** ("No on-goal match") instead
+   of buying off-goal.
 4. **Durability is shown in the ledger, not just claimed:** each boot writes a
    `"system"` entry reading the persisted spend off the mounted disk. A non-zero
    _"spend $X carried from persistent disk"_ after a redeploy is live proof the
@@ -88,12 +91,13 @@ ledger and budget meter update live.
   `"system"` entry reads the carried spend (observed _"spend $29.67 carried from
   persistent disk"_), so the cap holds across reboots, shown in-ledger not asserted.
   Single-instance; Postgres for real concurrency/scale.
-- **The demo mandate is a daily allowance** — spend is durable (above) and the cap
-  genuinely binds and resets once every 24 h (a real spend-limit primitive);
-  allowance set low (~$50) so deplete→deny is observable within minutes.
-  Once the day's budget is spent, the agent's own scheduled runs are **denied by
-  the Mandate** until the next reset. Errands re-fire on a ~2.5 min cadence so
-  there's always fresh activity to watch.
+- **The demo mandate is a spend allowance** — durable (above) and the cap genuinely
+  binds (a real spend-limit primitive), **daily/24 h in production**. The demo uses
+  a ~$50 allowance and a short **~15 min** reset so the full deplete → deny → reset
+  loop is watchable; once spent, the agent's own scheduled runs are **denied by the
+  Mandate** until the allowance resets. When no catalog item matches a goal the
+  agent **abstains** rather than buying off-goal. Errands re-fire on a ~2.5 min
+  cadence so there's always fresh activity.
 
 ## Proof of a real settlement
 
