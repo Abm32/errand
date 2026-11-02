@@ -14,6 +14,17 @@ const PRESETS = [
   ["⛔ Blocked by mandate", "A smart LED desk lamp"],
 ] as const;
 
+// The four outcomes the Mandate gate can return — shown while idle so the left
+// column isn't empty and the model is clear before the first run.
+const VERDICTS = [
+  ["auto approve", "Under the auto-approve limit → buys automatically via PayPal.", "bg-emerald-400", "text-emerald-300"],
+  ["needs approval", "Over the limit but within budget → waits for one human tap.", "bg-amber-400", "text-amber-300"],
+  ["denied", "Outside the mandate (cap, budget, category, merchant) → blocked, with a reason.", "bg-rose-400", "text-rose-300"],
+  ["abstain", "Nothing on-goal in the catalog → buys nothing, rather than junk.", "bg-slate-400", "text-slate-300"],
+] as const;
+
+const PIPELINE = ["Search Channel3", "Reason w/ Meta Muse", "Screen the Mandate", "Settle via PayPal"];
+
 export default function ErrandsPage() {
   const {
     mandate, mandateId, goal, setGoal, busy, thinking, step, reply, pick, decision, proposalId, approveUrl,
@@ -54,7 +65,37 @@ export default function ErrandsPage() {
               {busy ? <Spinner /> : <span aria-hidden className="transition-transform group-hover:translate-x-0.5">▸</span>}
               {busy ? "Working…" : "Run errand"}
             </motion.button>
+            <div className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-slate-500">
+              {PIPELINE.map((p, i) => (
+                <span key={p} className="flex items-center gap-1.5">
+                  {i > 0 && <span aria-hidden className="text-slate-700">→</span>}
+                  <span>{p}</span>
+                </span>
+              ))}
+            </div>
           </motion.div>
+
+          {/* Idle state — what the agent can decide (fills the column before a run) */}
+          {!thinking && !reply && considered.length === 0 && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={SPRING.smooth}
+              className="premium-card rounded-2xl bg-white/[0.03] p-5 backdrop-blur">
+              <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-400">What the agent can decide</p>
+              <ul className="space-y-3">
+                {VERDICTS.map(([label, desc, dot, tone]) => (
+                  <li key={label} className="flex items-start gap-3">
+                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`} />
+                    <div>
+                      <p className={`text-sm font-medium ${tone}`}>{label}</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-slate-400">{desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 rounded-lg border border-[#4d8bff]/20 bg-[#4d8bff]/[0.06] px-3 py-2 text-[11px] leading-relaxed text-[#b9c7ff]">
+                Try a preset above, or type any goal — the decision is made server-side against your Mandate before any money moves.
+              </p>
+            </motion.div>
+          )}
 
           {/* Thinking timeline */}
           <AnimatePresence mode="wait">
