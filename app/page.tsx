@@ -155,10 +155,10 @@ export default function Landing() {
             desc="Send a one-off errand, or set standing errands that run themselves. Both pass the same server-enforced Mandate. Each step opens the live dashboard." />
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {([
-              ["01", "Grant a mandate", "Budget, per-item cap, categories, blocked merchants — on the server, so the agent can't exceed it.", "/dashboard#mandate"],
-              ["02", "Send an errand", "Gofer searches real products and reasons with Meta Muse to pick the best buy within your limits.", "/dashboard#try"],
-              ["03", "Approve → PayPal settles", "Small buys clear automatically; bigger ones wait for one tap. Every charge is a real PayPal capture, logged.", "/dashboard#activity"],
-              ["04", "Or let it run itself", "Standing errands fire on a schedule and settle hands-free — still bound by the mandate, denied the instant the budget's spent.", "/dashboard#autonomous"],
+              ["01", "Grant a mandate", "Budget, per-item cap, categories, blocked merchants — on the server, so the agent can't exceed it.", "/dashboard/errands"],
+              ["02", "Send an errand", "Gofer searches real products and reasons with Meta Muse to pick the best buy within your limits.", "/dashboard/errands"],
+              ["03", "Approve → PayPal settles", "Small buys clear automatically; bigger ones wait for one tap. Every charge is a real PayPal capture, logged.", "/dashboard/activity"],
+              ["04", "Or let it run itself", "Standing errands fire on a schedule and settle hands-free — still bound by the mandate, denied the instant the budget's spent.", "/dashboard/standing"],
             ] as const).map(([n, t, d, href], i) => (
               <motion.div key={n} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ ...SPRING.smooth, delay: i * 0.06 }}>
                 <Link href={href}
@@ -228,7 +228,7 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
-              <Link href="/dashboard#activity" className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-[#8fb6ff] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b7dff] rounded">
+              <Link href="/dashboard/activity" className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-[#8fb6ff] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b7dff] rounded">
                 Watch it live <ArrowRight size={13} />
               </Link>
             </motion.div>
