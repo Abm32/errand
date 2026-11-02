@@ -19,6 +19,9 @@ export type AgentResult = {
   considered: Product[];
   pick?: Product;
   decision?: Decision;
+  // Which path produced the pick — so the ledger can show whether the live model
+  // (ai) or the deterministic planner (fallback) actually did the shopping.
+  source?: "ai" | "fallback";
 };
 
 function model(): LanguageModel | null {
@@ -58,24 +61,28 @@ function parseMaxCents(goal: string): number | undefined {
   return m ? Math.round(parseFloat(m[1]) * 100) : undefined;
 }
 
-// Satisfice WITH relevance: a money-safety agent should buy the cheapest thing
-// that actually matches the goal, not the globally cheapest (which can be
-// off-goal — "coffee beans" must not resolve to jojoba oil). Score each product
-// by goal-keyword overlap, keep the most-relevant tier, then take the cheapest
-// in it. Falls back to cheapest-overall only when nothing matches, to avoid
-// dead-ending a run.
+// Satisfice WITH relevance, and ABSTAIN when nothing matches. A money-safety
+// agent must buy the cheapest thing that actually matches the goal — never the
+// globally cheapest, which is off-goal junk ("coffee beans" must not resolve to
+// an air filter). A product is a candidate only if a goal keyword appears in its
+// TITLE (category/merchant alone is too loose). If NOTHING matches the title, we
+// return undefined so the caller buys nothing and records a no-match — a shopping
+// agent that can't find the thing should abstain, not buy a random cheap item.
 const GOAL_STOP = new Set(["the", "a", "an", "for", "my", "who", "and", "under", "around", "with", "to", "of", "find", "buy", "me", "some", "nice", "cheap", "gift", "that", "loves", "is", "good", "more", "get", "need", "want", "replace", "restock", "refill", "order"]);
 function goalTokens(goal: string): string[] {
   return goal.toLowerCase().match(/[a-z]+/g)?.filter((t) => t.length > 2 && !GOAL_STOP.has(t)) ?? [];
 }
-function cheapestRelevant(goal: string, products: Product[]): Product | undefined {
+export function cheapestRelevant(goal: string, products: Product[]): Product | undefined {
   if (products.length === 0) return undefined;
   const tokens = goalTokens(goal);
-  const hay = (p: Product) => `${p.title} ${p.category} ${p.merchant}`.toLowerCase();
-  const scored = products.map((p) => ({ p, s: tokens.filter((t) => hay(p).includes(t)).length }));
-  const best = Math.max(...scored.map((x) => x.s));
-  const pool = best > 0 ? scored.filter((x) => x.s === best) : scored; // top relevance tier (or all)
-  return [...pool].sort((a, b) => a.p.priceCents - b.p.priceCents)[0]?.p; // cheapest in that tier
+  if (tokens.length === 0) return [...products].sort((a, b) => a.priceCents - b.priceCents)[0]; // no usable goal words → cheapest
+  // Require a goal keyword in the TITLE — the actual product, not its shelf.
+  const relevant = products.filter((p) => {
+    const title = p.title.toLowerCase();
+    return tokens.some((t) => title.includes(t));
+  });
+  if (relevant.length === 0) return undefined; // nothing on-goal → abstain, don't buy junk
+  return [...relevant].sort((a, b) => a.priceCents - b.priceCents)[0]; // cheapest on-goal item
 }
 
 function decide(mandate: Mandate, p: Product): Decision {
@@ -90,7 +97,10 @@ async function fallback(goal: string, mandate: Mandate, maxCents: number): Promi
   const found = await searchProducts(goal, maxCents);
   const pick = cheapestRelevant(goal, found);
   if (!pick) {
-    return { reply: "I couldn't find anything within your mandate's budget.", considered: found };
+    const reply = found.length === 0
+      ? "I couldn't find anything within your mandate's budget."
+      : `Nothing in the catalog matched "${goal}" closely enough — abstaining rather than buying off-goal.`;
+    return { reply, considered: found, source: "fallback" };
   }
   const decision = decide(mandate, pick);
   return {
@@ -98,6 +108,7 @@ async function fallback(goal: string, mandate: Mandate, maxCents: number): Promi
     considered: found,
     pick,
     decision,
+    source: "fallback",
   };
 }
 
@@ -164,12 +175,17 @@ async function aiRun(goal: string, mandate: Mandate, maxCents: number, m: Langua
   // If the model didn't commit to a pick, fall back to the deterministic choice.
   if (!recommendation) {
     if (considered.length === 0) considered = await searchProducts(goal, maxCents);
-    const pick = cheapestRelevant(goal, considered); // satisfice within the goal-relevant tier
-    if (!pick) return { reply: "I couldn't find anything within your mandate's budget.", considered };
+    const pick = cheapestRelevant(goal, considered); // satisfice within the goal-relevant tier, else abstain
+    if (!pick) {
+      const reply = considered.length === 0
+        ? "I couldn't find anything within your mandate's budget."
+        : `Nothing in the catalog matched "${goal}" closely enough — abstaining rather than buying off-goal.`;
+      return { reply, considered, source: "fallback" };
+    }
     const decision = decide(mandate, pick);
-    return { reply: `I found "${pick.title}" for $${(pick.priceCents / 100).toFixed(2)}. ${decision.reason}`, considered, pick, decision };
+    return { reply: `I found "${pick.title}" for $${(pick.priceCents / 100).toFixed(2)}. ${decision.reason}`, considered, pick, decision, source: "fallback" };
   }
 
   const { product, reason } = recommendation;
-  return { reply: reason, considered, pick: product, decision: decide(mandate, product) };
+  return { reply: reason, considered, pick: product, decision: decide(mandate, product), source: "ai" };
 }

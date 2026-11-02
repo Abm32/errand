@@ -43,10 +43,15 @@ async function fireOne(e: StandingErrand): Promise<void> {
     summary: `Scheduled errand: "${e.goal}"`,
     detail: `Standing errand "${e.name}" fired autonomously — ${result.considered.length} products considered`,
   });
-  if (!result.pick || !result.decision) return;
+  if (!result.pick || !result.decision) {
+    // No on-goal product — the agent abstains rather than buying off-goal junk.
+    record({ kind: "system", summary: `No on-goal match for "${e.goal}" — abstained`, detail: result.reply });
+    return;
+  }
 
   const p = result.pick;
-  record({ kind: "recommend", summary: `Recommends ${p.title}`, detail: result.reply, amountCents: p.priceCents });
+  const via = result.source === "ai" ? "Meta Muse" : "deterministic planner";
+  record({ kind: "recommend", summary: `Recommends ${p.title}`, detail: `${result.reply} [picked by ${via}]`, amountCents: p.priceCents });
 
   if (result.decision.verdict === "deny") {
     record({ kind: "denied", summary: "Blocked by mandate (scheduled)", detail: result.decision.reason, amountCents: p.priceCents });
