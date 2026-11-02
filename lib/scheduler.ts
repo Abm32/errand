@@ -23,9 +23,9 @@ const STAGGER_MS = [25_000, 55_000, 85_000]; // first runs land soon after boot,
 // allowance resets once every 24h — a real spend-limit primitive, not a cosmetic
 // refill. Within a day the budget truly binds: once spent, the agent's own runs
 // get DENIED by the Mandate (the guardrail, live) until the next daily reset.
-// Spend is disk-durable by design (render.yaml mounts /var/data); on the current
-// Free-plan demo there is no disk, so spend is in-memory and resets on redeploy —
-// the boot "system" ledger entry reads $0 until a paid plan attaches the disk.
+// Spend is disk-durable: STORE_FILE/LEDGER_FILE point at the mounted /var/data
+// disk, so it survives restarts and redeploys (the boot "system" ledger entry
+// reads the carried spend after a reboot — durability shown live, not asserted).
 const BUDGET_RESET_MS = 24 * 60 * 60_000; // 24h daily allowance reset
 
 const nextAt = new Map<string, number>();
